@@ -41,7 +41,8 @@ export const DEFAULT_SETTINGS = {
   teamScore: DEFAULT_TEAM_SCORE,
 }
 
-export const CHALLENGE_TYPES = ['PHOTO', 'AR', 'QR']
+// TRIVIA es la encuesta (ver survey.js)
+export const CHALLENGE_TYPES = ['PHOTO', 'AR', 'QR', 'TRIVIA']
 export const PHOTO_TYPES = ['PHOTO', 'AR']
 
 // --- filas → objetos ---

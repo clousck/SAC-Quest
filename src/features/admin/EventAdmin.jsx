@@ -13,6 +13,7 @@ import ParticipantsAdmin from './ParticipantsAdmin'
 import PrintQr from './PrintQr'
 import RankingAdmin, { BigScreen } from './RankingAdmin'
 import SettingsAdmin from './SettingsAdmin'
+import SurveyResults from './SurveyResults'
 
 export default function EventAdmin() {
   const { eventId } = useParams()
@@ -86,6 +87,7 @@ export default function EventAdmin() {
         <Route path="retos" element={<ChallengesAdmin />} />
         <Route path="retos/nuevo" element={<ChallengeForm />} />
         <Route path="retos/:challengeId" element={<ChallengeForm />} />
+        <Route path="retos/:challengeId/resultados" element={<SurveyResults />} />
         <Route path="participantes" element={<ParticipantsAdmin />} />
         <Route path="ranking" element={<RankingAdmin />} />
         <Route path="galeria" element={<GalleryAdmin />} />

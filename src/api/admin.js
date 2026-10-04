@@ -57,6 +57,8 @@ export function uploadChallengeImage(id, blob) {
   return upload(`/admin/challenges/${id}/image`, form, { token: adminSession.get() })
 }
 
+export const getSurveyResults = (id) => call(`/challenges/${id}/survey-results`)
+
 export const listBadges = (eventId) => call(`/events/${eventId}/badges`)
 export const createBadge = (eventId, body) => post(`/events/${eventId}/badges`, body)
 export const updateBadge = (id, body) => patch(`/badges/${id}`, body)

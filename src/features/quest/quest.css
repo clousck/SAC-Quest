@@ -433,3 +433,21 @@
 .toast.accent { border-color: var(--accent); }
 .toast.ok { border-color: var(--ok, #4ade80); }
 .toast.bad { border-color: var(--bad, #f87171); }
+
+/* --- encuestas --- */
+
+.survey { display: flex; flex-direction: column; gap: 0.9rem; margin-top: 0.5rem; }
+.survey-q { border: 1px solid var(--line); border-radius: 14px; background: var(--card); padding: 0.9rem; margin: 0; min-width: 0; display: flex; flex-direction: column; gap: 0.5rem; }
+.survey-q legend { font-weight: 600; padding: 0; float: left; width: 100%; margin-bottom: 0.3rem; }
+.survey-opt { display: flex; align-items: center; gap: 0.6rem; padding: 0.7rem 0.8rem; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); cursor: pointer; clear: both; }
+.survey-opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--accent); }
+.survey-opt span { flex: 1; overflow-wrap: anywhere; }
+.survey-opt span[aria-label] { flex: none; color: var(--ok); font-weight: 800; }
+.survey-opt.on { border-color: var(--accent); }
+.survey-opt.right { border-color: var(--ok); }
+.survey-opt.wrong { border-color: var(--bad); }
+.survey-scale { display: flex; gap: 0.4rem; clear: both; }
+.survey-scale button { flex: 1; min-height: 48px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: inherit; font-weight: 700; cursor: pointer; }
+.survey-scale button.on { background: var(--accent); border-color: var(--accent); color: #111; }
+.survey-q textarea { clear: both; width: 100%; padding: 0.7rem; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: inherit; font: inherit; resize: vertical; }
+.survey-q:disabled .survey-opt, .survey-q:disabled .survey-scale button { cursor: default; }

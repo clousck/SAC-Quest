@@ -404,6 +404,105 @@ describe('flujo completo', () => {
     assert.equal(goals[0].challengeId, list.find((c) => c.title === 'Checkpoint').id, 'apunta al reto copiado')
   })
 
+  test('encuesta: QR propio, un intento, corrección y resultados', async () => {
+    const slug = '/events/sac-quest-2027'
+    const survey = {
+      qrOnly: true,
+      minCorrect: 2,
+      questions: [
+        { type: 'choice', text: '¿Qué significa SAC?', options: ['Uno', 'Dos', 'Tres'], correct: 1 },
+        { type: 'choice', text: '¿Quién dio la charla?', options: ['Ana', 'Beto'], correct: 0 },
+        { type: 'scale', text: '¿Qué tan útil fue?' },
+        { type: 'text', text: '¿Qué tema quieres?' },
+      ],
+    }
+    const body = { type: 'TRIVIA', title: 'Encuesta de la charla', points: 30, status: 'active', requiresApproval: true, config: { survey } }
+    assert.equal((await call('POST', `/admin/events/${eventId}/challenges`, { token: mod, body })).status, 403)
+    const empty = await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body: { ...body, config: { survey: { questions: [] } } } })
+    assert.equal(empty.status, 400)
+    const ch = (await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body })).data.challenge
+    assert.equal(ch.requiresApproval, false, 'se aprueba sola')
+    assert.match(ch.qrCode, /^[A-Z2-9]{6}$/)
+    assert.deepEqual(ch.config.survey.questions.map((q) => q.id), ['q1', 'q2', 'q3', 'q4'])
+
+    // En la lista va solo el resumen: ni preguntas ni respuestas correctas.
+    const listed = (await call('GET', `${slug}/challenges`, { token: ana })).data.challenges.find((c) => c.id === ch.id)
+    assert.deepEqual(listed.survey, { questions: 4, gradable: 2, minCorrect: 2, qrOnly: true })
+    assert.equal(listed.state, 'available')
+
+    const path = `${slug}/challenges/${ch.id}`
+    const noCode = await call('GET', `${path}/survey`, { token: ana })
+    assert.equal(noCode.status, 403)
+    assert.equal(noCode.data.error.code, 'qr_required')
+    // Escanear el QR lleva a la encuesta, no la completa.
+    const scan = await call('POST', `${slug}/qr/${ch.qrCode.toLowerCase()}`, { token: ana })
+    assert.deepEqual(scan.data, { survey: { id: ch.id, title: 'Encuesta de la charla' } })
+    const form = await call('GET', `${path}/survey?code=${ch.qrCode}`, { token: ana })
+    assert.equal(form.data.answered, false)
+    assert.equal(form.data.questions.length, 4)
+    assert.ok(!JSON.stringify(form.data).includes('"correct"'), 'no se filtran las correctas')
+
+    const good = { q1: 1, q2: 0, q3: 5, q4: '  Robótica  ' }
+    const wrongCode = await call('POST', `${path}/answers`, { token: ana, body: { answers: good, code: 'ZZZZZZ' } })
+    assert.equal(wrongCode.status, 403)
+    const incomplete = await call('POST', `${path}/answers`, { token: ana, body: { answers: { q1: 1 }, code: ch.qrCode } })
+    assert.equal(incomplete.status, 400)
+
+    const sent = await call('POST', `${path}/answers`, { token: ana, body: { answers: good, code: ch.qrCode } })
+    assert.equal(sent.status, 201)
+    assert.deepEqual(sent.data.result, { correct: 2, total: 2, passed: true })
+    assert.equal(sent.data.submission.pointsAwarded, 30)
+    assert.equal(sent.data.me.xp, 100)
+
+    // Un solo intento: ni reenviando ni borrando el envio.
+    const again = await call('POST', `${path}/answers`, { token: ana, body: { answers: good, code: ch.qrCode } })
+    assert.equal(again.status, 409)
+    assert.equal(again.data.error.code, 'already_done')
+    const del = await call('DELETE', `${slug}/me/submissions/${sent.data.submission.id}`, { token: ana })
+    assert.equal(del.status, 403)
+
+    // Sin el minimo de aciertos: completada con 0 puntos.
+    const bad = await call('POST', `${path}/answers`, { token: beto, body: { answers: { q1: 0, q2: 0, q3: 2 }, code: ch.qrCode } })
+    assert.deepEqual(bad.data.result, { correct: 1, total: 2, passed: false })
+    assert.equal(bad.data.submission.pointsAwarded, 0)
+    const betoList = (await call('GET', `${slug}/challenges`, { token: beto })).data.challenges.find((c) => c.id === ch.id)
+    assert.equal(betoList.state, 'approved')
+
+    // Mientras sigue abierta se ven mis respuestas, no las correctas.
+    const mine = await call('GET', `${path}/survey`, { token: ana })
+    assert.equal(mine.data.answered, true)
+    assert.equal(mine.data.closed, false)
+    assert.deepEqual(mine.data.answers, { q1: 1, q2: 0, q3: 5, q4: 'Robótica' })
+    assert.ok(!JSON.stringify(mine.data.questions).includes('"correct"'))
+
+    // Con respuestas ya no se pueden cambiar las preguntas; lo demas si.
+    const edited = { ...survey, questions: survey.questions.slice(0, 2) }
+    const locked = await call('PATCH', `/admin/challenges/${ch.id}`, { token: admin, body: { config: { survey: edited } } })
+    assert.equal(locked.status, 409)
+    assert.equal(locked.data.error.code, 'survey_locked')
+
+    // "Cerrar ahora" = poner el fin del horario: ya nadie responde y se ven las correctas.
+    const closedAt = new Date(Date.now() - 1000).toISOString()
+    const closed = await call('PATCH', `/admin/challenges/${ch.id}`, { token: admin, body: { availableUntil: closedAt } })
+    assert.equal(closed.status, 200)
+    const dani = (await call('POST', `${slug}/join`, { body: { alias: 'Dani', teamId: teamA, consent: true, code: joinCode } })).data.token
+    const late = await call('POST', `${path}/answers`, { token: dani, body: { answers: good, code: ch.qrCode } })
+    assert.equal(late.status, 409)
+    assert.equal(late.data.error.code, 'expired')
+    const after = await call('GET', `${path}/survey`, { token: beto })
+    assert.equal(after.data.closed, true)
+    assert.deepEqual(after.data.questions.map((q) => q.correct), [1, 0, undefined, undefined])
+
+    const results = await call('GET', `/admin/challenges/${ch.id}/survey-results`, { token: mod })
+    assert.equal(results.data.responses.length, 2)
+    assert.deepEqual(results.data.summary[0].options.map((o) => o.count), [1, 1, 0])
+    assert.equal(results.data.summary[2].average, 3.5)
+    assert.deepEqual(
+      results.data.responses.map((r) => [r.alias, r.correct, r.pointsAwarded, r.answers.q4]),
+      [['Ana', 2, 30, 'Robótica'], ['Beto', 1, 0, undefined]],
+    )
+  })
+
   test('cerrar el evento bloquea nuevos envíos', async () => {
     await call('PATCH', `/admin/events/${eventId}`, { token: admin, body: { status: 'closed' } })
     const res = await call('POST', `/events/sac-quest-2027/qr/${qrCh.qrCode}`, { token: beto })

@@ -10,6 +10,7 @@ import JoinScreen from './JoinScreen'
 import ProfileScreen from './ProfileScreen'
 import QrClaim from './QrClaim'
 import RankingScreen from './RankingScreen'
+import SurveyScreen from './SurveyScreen'
 import { QuestContext } from './QuestContext'
 import { session } from './session'
 import { ErrorBox, Spinner } from './ui'
@@ -200,6 +201,7 @@ function Joined({ slug, token, eventData, signOut }) {
           <Route index element={<HomeScreen />} />
           <Route path="r/:id" element={<ChallengeScreen />} />
           <Route path="q/:code" element={<QrClaim />} />
+          <Route path="s/:id" element={<SurveyScreen />} />
           <Route path="ranking" element={<RankingScreen />} />
           <Route path="galeria" element={<GalleryScreen />} />
           <Route path="perfil" element={<ProfileScreen />} />

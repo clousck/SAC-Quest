@@ -13,6 +13,10 @@ export const getChallenges = (slug, token) => request(`${ev(slug)}/challenges`, 
 export const getChallenge = (slug, token, id) => request(`${ev(slug)}/challenges/${id}`, { token })
 export const claimQr = (slug, token, code) =>
   request(`${ev(slug)}/qr/${encodeURIComponent(code)}`, { method: 'POST', token })
+export const getSurvey = (slug, token, id, code) =>
+  request(`${ev(slug)}/challenges/${id}/survey${code ? `?code=${encodeURIComponent(code)}` : ''}`, { token })
+export const submitSurvey = (slug, token, id, body) =>
+  request(`${ev(slug)}/challenges/${id}/answers`, { method: 'POST', token, body })
 export const getRanking = (slug, token) => request(`${ev(slug)}/ranking`, { token })
 export const getMySubmissions = (slug, token) => request(`${ev(slug)}/me/submissions`, { token })
 export const deleteMySubmission = (slug, token, id) =>

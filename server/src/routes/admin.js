@@ -26,6 +26,7 @@ import {
   toEvent,
   toTeamGoal,
 } from '../rules.js'
+import { normalizeSurvey, summarize } from '../survey.js'
 import {
   HttpError,
   badRequest,
@@ -516,13 +517,36 @@ export function adminRoutes(svc) {
       data.requiresPhoto = true
       data.requiresApproval = true
     }
-    if (type === 'QR') {
+    // Checkpoints y encuestas no llevan foto y se aprueban solos.
+    if (type === 'QR' || type === 'TRIVIA') {
       data.requiresPhoto = false
       data.requiresApproval = false
     }
     if (data.availableFrom && data.availableUntil && data.availableFrom > data.availableUntil) {
       throw badRequest('«Disponible hasta» debe ser posterior a «disponible desde».')
     }
+  }
+
+  // Los checkpoints y las encuestas tienen un QR propio.
+  const hasQr = (type) => type === 'QR' || type === 'TRIVIA'
+
+  /**
+   * Preguntas de una encuesta. Con respuestas ya recibidas no se pueden
+   * cambiar: las respuestas guardadas dejarian de corresponder.
+   */
+  function applySurvey(data, body, type, ch) {
+    if (type !== 'TRIVIA') return
+    if (body.config === undefined && ch?.config.survey) return
+    const survey = normalizeSurvey(body.config?.survey)
+    // Si ya hay respuestas solo se puede cambiar si exige el QR.
+    const same = (s) => JSON.stringify({ ...s, qrOnly: false })
+    if (ch?.config.survey && same(survey) !== same(ch.config.survey)) {
+      const answered = db.get('SELECT COUNT(*) n FROM submissions WHERE challenge_id = :id', { id: ch.id }).n
+      if (answered) {
+        throw conflict('Esta encuesta ya tiene respuestas: no se pueden cambiar sus preguntas. Crea otra encuesta.', 'survey_locked')
+      }
+    }
+    data.config = { survey }
   }
 
   r.get('/events/:eventId/challenges', (c) => {
@@ -542,6 +566,7 @@ export function adminRoutes(svc) {
     if (!data.type) throw badRequest('Falta «tipo»')
     if (!data.title) throw badRequest('Falta «título»')
     applyTypeRules(data, data.type)
+    applySurvey(data, body, data.type, null)
     const t = now()
     const id = Number(
       db.run(
@@ -552,7 +577,7 @@ export function adminRoutes(svc) {
           eventId: ev.id,
           type: data.type,
           title: data.title,
-          qrCode: data.type === 'QR' ? uniqueCode('challenges', 'qr_code', 6) : null,
+          qrCode: hasQr(data.type) ? uniqueCode('challenges', 'qr_code', 6) : null,
           t,
         },
       ).lastInsertRowid,
@@ -566,10 +591,12 @@ export function adminRoutes(svc) {
   r.patch('/challenges/:id', async (c) => {
     requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
-    const data = pick(await jsonBody(c), challengeFields)
+    const body = await jsonBody(c)
+    const data = pick(body, challengeFields)
     const type = data.type ?? ch.type
     applyTypeRules(data, type)
-    if (type === 'QR' && !ch.qrCode) data.qrCode = uniqueCode('challenges', 'qr_code', 6)
+    applySurvey(data, body, type, ch)
+    if (hasQr(type) && !ch.qrCode) data.qrCode = uniqueCode('challenges', 'qr_code', 6)
     data.updatedAt = now()
     update('challenges', ch.id, data, challengeColumns)
     return c.json({ challenge: adminChallenge(getChallenge(ch.id)) })
@@ -579,9 +606,44 @@ export function adminRoutes(svc) {
   r.post('/challenges/:id/regenerate-qr', (c) => {
     requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
-    if (ch.type !== 'QR') throw badRequest('Este reto no es de tipo QR.')
+    if (!hasQr(ch.type)) throw badRequest('Este reto no tiene código QR.')
     update('challenges', ch.id, { qrCode: uniqueCode('challenges', 'qr_code', 6), updatedAt: now() }, challengeColumns)
     return c.json({ challenge: adminChallenge(getChallenge(ch.id)) })
+  })
+
+  // Resultados de una encuesta: totales por pregunta y lo que respondio cada persona.
+  r.get('/challenges/:id/survey-results', (c) => {
+    const ch = getChallenge(int(c.req.param('id'), 'id'))
+    const survey = ch.type === 'TRIVIA' && ch.config.survey
+    if (!survey) throw badRequest('Este reto no es una encuesta.')
+    const responses = db
+      .all(
+        `SELECT s.id, s.answer, s.points_awarded, s.created_at, p.alias, t.name AS team
+           FROM submissions s
+           JOIN participants p ON p.id = s.participant_id
+           LEFT JOIN teams t ON t.id = p.team_id
+          WHERE s.challenge_id = :id AND s.status = 'approved'
+          ORDER BY s.id`,
+        { id: ch.id },
+      )
+      .map((s) => {
+        const saved = parseJson(s.answer, { answers: {}, correct: 0 })
+        return {
+          id: s.id,
+          alias: s.alias,
+          team: s.team,
+          createdAt: s.created_at,
+          pointsAwarded: s.points_awarded,
+          correct: saved.correct,
+          answers: saved.answers,
+        }
+      })
+    return c.json({
+      challenge: { id: ch.id, title: ch.title, icon: ch.icon, points: ch.points },
+      survey,
+      summary: summarize(survey, responses),
+      responses,
+    })
   })
 
   r.post('/events/:eventId/challenges/reorder', async (c) => {

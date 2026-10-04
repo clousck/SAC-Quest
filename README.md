@@ -5,7 +5,8 @@ teléfono, sin instalar nada:
 
     QR del evento → nombre y Rama → retos → cámara → subir → puntos
 
-- **Retos**: 📷 foto, 🐱 AR con Watt (el booth de abajo) y 📍 checkpoints QR.
+- **Retos**: 📷 foto, 🐱 AR con Watt (el booth de abajo), 📍 checkpoints QR y
+  📝 encuestas sobre las charlas (se abren con su propio QR, un solo intento).
   Cada reto tiene puntos, categoría, dificultad, horario, cupo, desbloqueo por
   otros retos o XP, modo secreto y aprobación manual opcional.
 - **Gamificación liviana**: XP, niveles, logros y ranking individual. El ranking

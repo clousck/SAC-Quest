@@ -6,6 +6,17 @@ import { useAdmin, useEventAdmin } from './AdminContext'
 
 export const CH_STATUS = { draft: 'Borrador', active: 'Activo', inactive: 'Inactivo' }
 
+// Checkpoints y encuestas se abren y cierran en el momento (una charla, un QR escondido).
+const TIMED = ['QR', 'TRIVIA']
+const hour = (iso) => new Date(iso).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })
+
+/** Estado segun el horario: abierto, cerrado o por abrir. */
+function timeState(c, now = Date.now()) {
+  if (c.availableUntil && now > new Date(c.availableUntil).getTime()) return { closed: true, text: `Cerrado a las ${hour(c.availableUntil)}` }
+  if (c.availableFrom && now < new Date(c.availableFrom).getTime()) return { closed: false, text: `Abre a las ${hour(c.availableFrom)}` }
+  return { closed: false, text: c.availableUntil ? `Abierto hasta las ${hour(c.availableUntil)}` : '' }
+}
+
 export default function ChallengesAdmin() {
   const { event } = useEventAdmin()
   const { isAdmin } = useAdmin()
@@ -17,6 +28,18 @@ export default function ChallengesAdmin() {
     const status = ch.status === 'active' ? 'inactive' : 'active'
     const { challenge } = await updateChallenge(ch.id, { status })
     setData((d) => ({ challenges: d.challenges.map((c) => (c.id === ch.id ? challenge : c)) }))
+  }
+
+  const patch = async (ch, body) => {
+    const { challenge } = await updateChallenge(ch.id, body)
+    setData((d) => ({ challenges: d.challenges.map((c) => (c.id === ch.id ? challenge : c)) }))
+  }
+  // "Cerrar ahora" pone el fin del horario: el reto sigue visible, pero ya nadie puede completarlo.
+  const closeNow = (ch) => patch(ch, { availableFrom: null, availableUntil: new Date().toISOString() })
+  const openNow = (ch) => patch(ch, { availableFrom: null, availableUntil: null })
+  const openFor = (ch) => {
+    const minutes = Number(window.prompt('¿Cuántos minutos queda abierto?', '10'))
+    if (minutes > 0) patch(ch, { availableFrom: null, availableUntil: new Date(Date.now() + minutes * 60_000).toISOString() })
   }
 
   const move = async (index, delta) => {
@@ -33,7 +56,7 @@ export default function ChallengesAdmin() {
         <h2>Retos ({list.length})</h2>
         {isAdmin && (
           <div className="row">
-            {list.some((c) => c.type === 'QR') && (
+            {list.some((c) => TIMED.includes(c.type)) && (
               <Link className="btn" to={`${base}/imprimir`}>
                 🖨️ Imprimir QRs
               </Link>
@@ -76,9 +99,33 @@ export default function ChallengesAdmin() {
                 ✓ {c.counts.approved} · ⏳ {c.counts.pending} · ✕ {c.counts.rejected}
                 {c.maxCompletions && ` · cupo ${c.maxCompletions}`}
               </span>
+              {c.status === 'active' && timeState(c).text && (
+                <span className={timeState(c).closed ? 'muted small' : 'small ok-text'}>🕒 {timeState(c).text}</span>
+              )}
+              {c.type === 'TRIVIA' && (
+                <Link className="small" to={`${base}/retos/${c.id}/resultados`}>
+                  📊 Ver resultados
+                </Link>
+              )}
             </div>
             <div className="ch-row-side">
               <span className={`pill st-${c.status}`}>{CH_STATUS[c.status]}</span>
+              {isAdmin && c.status === 'active' && TIMED.includes(c.type) && (
+                <div className="row">
+                  {timeState(c).closed ? (
+                    <button className="btn small" onClick={() => openNow(c)}>
+                      Abrir ahora
+                    </button>
+                  ) : (
+                    <button className="btn small" onClick={() => closeNow(c)}>
+                      Cerrar ahora
+                    </button>
+                  )}
+                  <button className="btn small" onClick={() => openFor(c)}>
+                    Abrir X min
+                  </button>
+                </div>
+              )}
               {isAdmin && (
                 <button className="btn small" onClick={() => toggle(c)}>
                   {c.status === 'active' ? 'Desactivar' : 'Activar'}

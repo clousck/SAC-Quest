@@ -6,7 +6,8 @@ import { useEventAdmin } from './AdminContext'
 import QrImage, { appHost, checkpointUrl, eventJoinUrl } from './QrImage'
 
 /**
- * Hoja para imprimir: el QR de entrada al evento y el de cada checkpoint.
+ * Hoja para imprimir: el QR de entrada al evento, el de cada checkpoint y el
+ * de cada encuesta (para proyectarlo al final de la charla).
  * Debajo de cada QR va el codigo en texto, por si la camara no lo lee.
  */
 export default function PrintQr() {
@@ -14,7 +15,7 @@ export default function PrintQr() {
   const [params] = useSearchParams()
   const only = params.get('reto')
   const { data, loading } = useAsync(() => listChallenges(event.id), [event.id])
-  const checkpoints = (data?.challenges ?? []).filter((c) => c.type === 'QR' && c.qrCode && (!only || String(c.id) === only))
+  const checkpoints = (data?.challenges ?? []).filter((c) => (c.type === 'QR' || c.type === 'TRIVIA') && c.qrCode && (!only || String(c.id) === only))
 
   return (
     <section className="admin-page print-page">
@@ -39,12 +40,14 @@ export default function PrintQr() {
         )}
         {checkpoints.map((c) => (
           <div key={c.id} className="print-item">
-            <p className="print-eyebrow">Checkpoint · {event.name}</p>
+            <p className="print-eyebrow">
+              {c.type === 'TRIVIA' ? 'Encuesta' : 'Checkpoint'} · {event.name}
+            </p>
             <h2>
-              {c.icon} {c.visibility === 'secret' ? '¡Encontraste un checkpoint secreto!' : c.title}
+              {c.icon} {c.type === 'QR' && c.visibility === 'secret' ? '¡Encontraste un checkpoint secreto!' : c.title}
             </h2>
             <QrImage value={checkpointUrl(event, c)} size={260} />
-            <p>Escanéalo para ganar {c.points} XP</p>
+            <p>{c.type === 'TRIVIA' ? `Escanéalo y responde para ganar ${c.points} XP` : `Escanéalo para ganar ${c.points} XP`}</p>
             <p className="print-code">
               Código: <strong>{c.qrCode}</strong>
             </p>

@@ -1,5 +1,5 @@
 import { Suspense, lazy, useEffect, useRef, useState } from 'react'
-import { useNavigate, useParams } from 'react-router'
+import { Link, useNavigate, useParams } from 'react-router'
 import { claimQr } from '../../api/quest'
 import { prepareImage } from '../../shared/imageResize'
 import { useToast } from '../../shared/Toast'
@@ -64,6 +64,11 @@ export default function ChallengeScreen() {
           ✅ ¡Completado! Ganaste {c.points ?? ''} XP.
         </div>
       )}
+      {c.type === 'TRIVIA' && c.state === 'approved' && (
+        <Link className="btn block" to={`/e/${slug}/s/${c.id}`}>
+          Ver mis respuestas
+        </Link>
+      )}
       {c.state === 'rejected' && (
         <div className="result bad">
           Tu foto no fue aprobada{c.rejectReason ? `: ${c.rejectReason}` : '.'} Puedes intentarlo de nuevo.
@@ -73,7 +78,9 @@ export default function ChallengeScreen() {
       {c.state === 'upcoming' && <div className="result">🕒 Disponible desde {formatWhen(c.availableFrom)}.</div>}
       {STATE_TEXT[c.state] && <div className="result">{STATE_TEXT[c.state]}</div>}
 
-      {canDo && (c.type === 'QR' ? <QrAction onDone={setCelebration} /> : <EvidenceAction challenge={c} onDone={setCelebration} />)}
+      {canDo && c.type === 'QR' && <QrAction onDone={setCelebration} />}
+      {canDo && c.type === 'TRIVIA' && <SurveyAction challenge={c} />}
+      {canDo && c.type !== 'QR' && c.type !== 'TRIVIA' && <EvidenceAction challenge={c} onDone={setCelebration} />}
 
       {celebration && <Celebration {...celebration} onClose={() => navigate(`/e/${slug}`)} />}
 
@@ -240,9 +247,48 @@ function EvidenceAction({ challenge, onDone }) {
   )
 }
 
+/** Encuesta: se abre directo o, si es "solo con QR", con el codigo de su QR. */
+function SurveyAction({ challenge }) {
+  const { slug } = useQuest()
+  const navigate = useNavigate()
+  const [code, setCode] = useState('')
+  const { survey } = challenge
+
+  if (!survey.qrOnly) {
+    return (
+      <div className="evidence">
+        <Link className="btn primary block big" to={`/e/${slug}/s/${challenge.id}`}>
+          Responder ({survey.questions} {survey.questions === 1 ? 'pregunta' : 'preguntas'})
+        </Link>
+      </div>
+    )
+  }
+  return (
+    <div className="evidence">
+      <div className="qr-help">
+        <p>📱 Escanea el código QR de la encuesta con la <strong>cámara de tu teléfono</strong> para responderla.</p>
+      </div>
+      <form
+        className="form inline-form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          navigate(`/e/${slug}/s/${challenge.id}?c=${encodeURIComponent(code.trim())}`)
+        }}
+      >
+        <label>
+          ¿No puedes escanear? Escribe el código que está bajo el QR
+          <input value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="off" required />
+        </label>
+        <button className="btn primary block">Abrir encuesta</button>
+      </form>
+    </div>
+  )
+}
+
 /** Checkpoint QR: se escanea con la camara del telefono; aca, codigo manual. */
 function QrAction({ onDone }) {
   const { slug, token, refresh } = useQuest()
+  const navigate = useNavigate()
   const [code, setCode] = useState('')
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
@@ -254,6 +300,7 @@ function QrAction({ onDone }) {
     try {
       // Si el codigo es de otro checkpoint, igual cuenta: se festeja ese.
       const res = await claimQr(slug, token, code)
+      if (res.survey) return navigate(`/e/${slug}/s/${res.survey.id}?c=${encodeURIComponent(code.trim())}`)
       onDone({
         icon: '📍',
         title: res.already

@@ -43,15 +43,23 @@ guarda lo que no se deduce leyendo el código.
   `settings.teamScore`. Decidido con simulaciones (`server/scripts/simulate-team-ranking.js`): la suma
   de XP hacía ganar siempre a la Rama más grande; los inscritos inactivos no deben sumar. Las Ramas
   muy chicas se juntan a mano en el panel (máx. 5 personas por Rama unida).
-- Aprobación fija por tipo: QR automático; PHOTO/AR siempre con moderador (`applyTypeRules`).
+- Aprobación fija por tipo: QR y encuestas automático; PHOTO/AR siempre con moderador (`applyTypeRules`).
+- **Encuestas** = retos `TRIVIA` (`server/src/survey.js`), sin tablas nuevas: preguntas en
+  `challenges.config.survey`, respuestas en `submissions.answer`. Un solo intento, se corrigen en el
+  servidor (las correctas no viajan al teléfono hasta que la encuesta cierra), QR propio
+  (`qrOnly`: sin su código no se responde) y pantalla propia `/e/:slug/s/:id` porque una encuesta
+  secreta no está en la lista de retos. Sin el mínimo de aciertos queda aprobada con 0 puntos. Con
+  respuestas ya no se pueden cambiar las preguntas. «Cerrar ahora» del panel = poner `availableUntil`
+  (desactivar el reto lo esconde y ya no se ven las respuestas). El participante solo puede borrar
+  envíos con foto: borrar una encuesta permitiría reintentarla.
 - Fotos: el teléfono las reduce a 2048 px JPEG y quita el EXIF (`src/shared/imageResize.js`); la API
   entrega **URLs firmadas** (`media/...?exp&sig`, relativas a la base de la API), ventanas de 6 h
   para que el navegador las cachee.
 - Identidad sin cuentas: token por evento (localStorage `rnrquest:v1:<slug>`) + **código de
   recuperación**. Entrar exige el **código del evento** (va en el QR como `?c=`).
 - Subidas idempotentes por `clientId`; si no hay red quedan en IndexedDB (`uploadQueue.js`).
-- "Reto secreto" es una **visibilidad**, no un tipo. Tipos implementados: PHOTO, AR, QR
-  (el esquema ya admite TRIVIA y TEXT).
+- "Reto secreto" es una **visibilidad**, no un tipo. Tipos implementados: PHOTO, AR, QR,
+  TRIVIA (el esquema ya admite TEXT).
 - Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar).
 
 ## Trampas conocidas (no repetir)
@@ -77,7 +85,7 @@ guarda lo que no se deduce leyendo el código.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 24 pruebas (API completa + config)
+    cd server && npm test             # 25 pruebas (API completa + config)
     npx oxlint && npm run build       # 0 errores esperados (hay ~22 warnings de estilo conocidos)
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
 
@@ -86,5 +94,5 @@ guarda lo que no se deduce leyendo el código.
 - Probado: tests de API, recorrido E2E en navegador headless (Edge + puppeteer-core, cámara
   falsa), carga de 150 usuarios simultáneos en el PC (no en la Pi).
 - **Pendiente**: probar en iPhone y Android reales (cámara, AR, subida); desplegar en la Pi con
-  Docker (docs/docker.md); decidir si `/` pasa a ser `/entrar` con el dominio nuevo; encuestas
-  sobre las charlas (tipos TRIVIA/TEXT, activables por QR o por reto): diseñar antes de programar.
+  Docker (docs/docker.md); decidir si `/` pasa a ser `/entrar` con el dominio nuevo; probar
+  encuestas y Score de Rama con gente real.

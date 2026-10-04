@@ -12,7 +12,7 @@ import {
   uploadChallengeImage,
 } from '../../api/admin'
 import { prepareImage } from '../../shared/imageResize'
-import { ErrorBox, Spinner } from '../quest/ui'
+import { ErrorBox, Spinner, TYPE_EMOJI } from '../quest/ui'
 import { useAdmin, useEventAdmin } from './AdminContext'
 import QrImage, { checkpointUrl, fromLocalInput, toLocalInput } from './QrImage'
 
@@ -31,12 +31,14 @@ const EMPTY = {
   maxCompletions: '',
   afterChallenges: [],
   minXp: '',
+  survey: { qrOnly: true, minCorrect: 0, questions: [] },
 }
 
 const TYPES = [
   ['PHOTO', '📷 Foto', 'La persona toma una foto con la cámara del teléfono.'],
   ['AR', '🐱 AR con Watt', 'Abre la cámara con Watt y la foto resultante es la evidencia.'],
   ['QR', '📍 Checkpoint QR', 'Se completa escaneando un QR impreso. No lleva foto.'],
+  ['TRIVIA', '📝 Encuesta', 'Preguntas sobre una charla. Se responde una sola vez y se corrige sola.'],
 ]
 
 const ICONS = ['📷', '🤝', '🐱', '📍', '🎤', '🧑‍🤝‍🧑', '🌐', '💡', '⚡', '🏆', '🎯', '🔒', '🍕', '🎉', '🤖', '🔌']
@@ -57,6 +59,7 @@ function toForm(c) {
     maxCompletions: c.maxCompletions ?? '',
     afterChallenges: c.unlockRule?.afterChallenges ?? [],
     minXp: c.unlockRule?.minXp ?? '',
+    survey: c.config?.survey ?? EMPTY.survey,
   }
 }
 
@@ -75,6 +78,7 @@ function toBody(f) {
     availableUntil: fromLocalInput(f.availableUntil),
     maxCompletions: f.maxCompletions === '' ? null : Number(f.maxCompletions),
     unlockRule: { afterChallenges: f.afterChallenges, minXp: Number(f.minXp) || 0 },
+    ...(f.type === 'TRIVIA' && { config: { survey: { ...f.survey, minCorrect: Number(f.survey.minCorrect) || 0 } } }),
   }
 }
 
@@ -175,7 +179,17 @@ export default function ChallengeForm() {
           <div className="type-picker">
             {TYPES.map(([value, label, help]) => (
               <label key={value} className={form.type === value ? 'on' : ''}>
-                <input type="radio" name="type" value={value} checked={form.type === value} onChange={set('type')} />
+                <input
+                  type="radio"
+                  name="type"
+                  value={value}
+                  checked={form.type === value}
+                  onChange={() => {
+                    // El icono acompaña al tipo mientras no se haya elegido otro a mano.
+                    setForm((f) => ({ ...f, type: value, icon: Object.values(TYPE_EMOJI).includes(f.icon) ? TYPE_EMOJI[value] : f.icon }))
+                    setSaved(false)
+                  }}
+                />
                 <strong>{label}</strong>
                 <small>{help}</small>
               </label>
@@ -257,10 +271,21 @@ export default function ChallengeForm() {
           )}
 
           <p className="muted small">
-            {form.type === 'QR'
-              ? '⚡ Se aprueba automáticamente al escanear el QR: no pasa por moderación.'
-              : '👀 Un moderador revisa cada foto antes de sumar los puntos.'}
+            {form.type === 'QR' && '⚡ Se aprueba automáticamente al escanear el QR: no pasa por moderación.'}
+            {form.type === 'TRIVIA' && '⚡ Se corrige y aprueba sola. Cada persona puede responder una sola vez.'}
+            {(form.type === 'PHOTO' || form.type === 'AR') && '👀 Un moderador revisa cada foto antes de sumar los puntos.'}
           </p>
+
+          {form.type === 'TRIVIA' && (
+            <SurveyEditor
+              survey={form.survey}
+              locked={!!challenge && challenge.counts.approved > 0}
+              onChange={(survey) => {
+                setForm((f) => ({ ...f, survey }))
+                setSaved(false)
+              }}
+            />
+          )}
 
           <details open={!!(form.availableFrom || form.availableUntil || form.maxCompletions)}>
             <summary>Horario y cupo</summary>
@@ -344,9 +369,22 @@ export default function ChallengeForm() {
             )}
           </div>
 
-          {challenge.type === 'QR' && challenge.qrCode && (
+          {challenge.type === 'TRIVIA' && (
+            <div className="card">
+              <h3>Respuestas</h3>
+              <p className="muted small">
+                {challenge.counts.approved} {challenge.counts.approved === 1 ? 'persona respondió' : 'personas respondieron'}. Para abrirla o
+                cerrarla al momento, usa los botones de la lista de retos.
+              </p>
+              <Link className="btn" to={`${base}/retos/${challenge.id}/resultados`}>
+                📊 Ver resultados
+              </Link>
+            </div>
+          )}
+
+          {(challenge.type === 'QR' || challenge.type === 'TRIVIA') && challenge.qrCode && (
             <div className="card qr-card">
-              <h3>Código QR del checkpoint</h3>
+              <h3>{challenge.type === 'QR' ? 'Código QR del checkpoint' : 'Código QR de la encuesta'}</h3>
               <QrImage value={checkpointUrl(event, challenge)} size={200} />
               <p className="code-text">{challenge.qrCode}</p>
               <p className="muted small break">{checkpointUrl(event, challenge)}</p>
@@ -377,5 +415,142 @@ export default function ChallengeForm() {
         </>
       )}
     </section>
+  )
+}
+
+const QUESTION_KINDS = [
+  ['choice', 'Opción única'],
+  ['scale', 'Escala 1 a 5'],
+  ['text', 'Texto corto'],
+]
+
+/** Preguntas de una encuesta. Con respuestas ya recibidas queda de solo lectura. */
+function SurveyEditor({ survey, locked, onChange }) {
+  const questions = survey.questions
+  const setQ = (i, patch) => onChange({ ...survey, questions: questions.map((q, j) => (j === i ? { ...q, ...patch } : q)) })
+  const gradable = questions.filter((q) => q.type === 'choice' && q.correct != null).length
+  const add = (type) =>
+    onChange({
+      ...survey,
+      questions: [...questions, type === 'choice' ? { type, text: '', options: ['', ''], correct: null } : { type, text: '' }],
+    })
+  const move = (i, delta) => {
+    const next = [...questions]
+    const [q] = next.splice(i, 1)
+    next.splice(i + delta, 0, q)
+    onChange({ ...survey, questions: next })
+  }
+
+  return (
+    <div className="survey-editor">
+      <h3>Preguntas</h3>
+      {locked && <p className="notice">Esta encuesta ya tiene respuestas: las preguntas no se pueden cambiar. Para otra versión, crea una encuesta nueva.</p>}
+      <fieldset disabled={locked}>
+        {questions.map((q, i) => (
+          <div key={i} className="survey-editor-q">
+            <div className="row">
+              <strong>{i + 1}.</strong>
+              <select
+                value={q.type}
+                aria-label="Tipo de pregunta"
+                onChange={(e) =>
+                  setQ(i, e.target.value === 'choice' ? { type: 'choice', options: q.options ?? ['', ''], correct: q.correct ?? null } : { type: e.target.value })
+                }
+              >
+                {QUESTION_KINDS.map(([v, l]) => (
+                  <option key={v} value={v}>
+                    {l}
+                  </option>
+                ))}
+              </select>
+              <button type="button" className="btn small" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Subir">
+                ↑
+              </button>
+              <button type="button" className="btn small" disabled={i === questions.length - 1} onClick={() => move(i, 1)} aria-label="Bajar">
+                ↓
+              </button>
+              <button type="button" className="btn small" onClick={() => onChange({ ...survey, questions: questions.filter((_, j) => j !== i) })}>
+                Quitar
+              </button>
+            </div>
+            <input value={q.text} onChange={(e) => setQ(i, { text: e.target.value })} placeholder="Escribe la pregunta" maxLength={300} required />
+            {q.type === 'choice' && (
+              <>
+                {q.options.map((opt, k) => (
+                  <div key={k} className="row survey-editor-opt">
+                    <input
+                      type="radio"
+                      name={`correct-${i}`}
+                      checked={q.correct === k}
+                      onChange={() => setQ(i, { correct: k })}
+                      aria-label="Marcar como correcta"
+                    />
+                    <input
+                      value={opt}
+                      onChange={(e) => setQ(i, { options: q.options.map((o, j) => (j === k ? e.target.value : o)) })}
+                      placeholder={`Opción ${k + 1}`}
+                      maxLength={120}
+                      required
+                    />
+                    {q.options.length > 2 && (
+                      <button
+                        type="button"
+                        className="btn small"
+                        onClick={() =>
+                          setQ(i, {
+                            options: q.options.filter((_, j) => j !== k),
+                            correct: q.correct === k ? null : q.correct > k ? q.correct - 1 : q.correct,
+                          })
+                        }
+                      >
+                        ✕
+                      </button>
+                    )}
+                  </div>
+                ))}
+                <div className="row">
+                  {q.options.length < 6 && (
+                    <button type="button" className="btn small" onClick={() => setQ(i, { options: [...q.options, ''] })}>
+                      + Opción
+                    </button>
+                  )}
+                  {q.correct != null && (
+                    <button type="button" className="btn small" onClick={() => setQ(i, { correct: null })}>
+                      Sin respuesta correcta
+                    </button>
+                  )}
+                  <span className="muted small">
+                    {q.correct == null ? 'De opinión. Si es de conocimiento, marca el círculo de la opción correcta.' : `Correcta: opción ${q.correct + 1}`}
+                  </span>
+                </div>
+              </>
+            )}
+          </div>
+        ))}
+        <div className="row">
+          {QUESTION_KINDS.map(([v, l]) => (
+            <button type="button" key={v} className="btn small" onClick={() => add(v)}>
+              + {l}
+            </button>
+          ))}
+        </div>
+        {gradable > 0 && (
+          <label>
+            Aciertos mínimos para ganar los puntos (de {gradable}; 0 = basta con responder)
+            <input
+              type="number"
+              min="0"
+              max={gradable}
+              value={survey.minCorrect}
+              onChange={(e) => onChange({ ...survey, minCorrect: e.target.value })}
+            />
+          </label>
+        )}
+      </fieldset>
+      <label className="check">
+        <input type="checkbox" checked={survey.qrOnly} onChange={(e) => onChange({ ...survey, qrOnly: e.target.checked })} />
+        <span>Solo se puede responder escaneando su QR (para proyectarlo al final de la charla)</span>
+      </label>
+    </div>
   )
 }

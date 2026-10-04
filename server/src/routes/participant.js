@@ -15,6 +15,7 @@ import {
   toEvent,
   usedSlots,
 } from '../rules.js'
+import { gradableCount, gradeSurvey, publicQuestions } from '../survey.js'
 import {
   HttpError,
   badRequest,
@@ -108,7 +109,17 @@ export function participantRoutes(svc) {
   }
 
   function publicChallenge(ch, st, used) {
+    // De una encuesta solo va el resumen: las preguntas se piden aparte (y con el QR si hace falta).
+    const survey = ch.type === 'TRIVIA' && ch.config.survey
     return {
+      ...(survey && {
+        survey: {
+          questions: survey.questions.length,
+          gradable: gradableCount(survey),
+          minCorrect: survey.minCorrect,
+          qrOnly: survey.qrOnly,
+        },
+      }),
       id: ch.id,
       type: ch.type,
       title: ch.title,
@@ -402,11 +413,13 @@ export function participantRoutes(svc) {
     const ch = toChallenge(
       db.get(
         `SELECT * FROM challenges
-          WHERE event_id = :eventId AND qr_code = :code AND type = 'QR' AND status = 'active'`,
+          WHERE event_id = :eventId AND qr_code = :code AND type IN ('QR', 'TRIVIA') AND status = 'active'`,
         { eventId: ev.id, code: normalizeCode(c.req.param('code')) },
       ),
     )
     if (!ch) throw notFound('Este código no corresponde a ningún checkpoint activo.')
+    // El QR de una encuesta no la completa: lleva a responderla.
+    if (ch.type === 'TRIVIA') return c.json({ survey: { id: ch.id, title: ch.title } })
 
     const outcome = db.tx(() => {
       const prev = db.get(
@@ -425,6 +438,97 @@ export function participantRoutes(svc) {
       challenge: publicChallenge(ch, st, ctx.used),
       ...submissionResult(ev, row, outcome.id),
     })
+  })
+
+  // --- encuestas (retos TRIVIA) ---
+
+  function surveyChallenge(ev, c) {
+    const ch = activeChallenge(ev, int(c.req.param('id'), 'id'))
+    if (ch.type !== 'TRIVIA' || !ch.config.survey) throw notFound('Este reto no es una encuesta.')
+    return ch
+  }
+
+  /** Una encuesta "solo con QR" exige el codigo de su QR (el que se proyecta en la charla). */
+  function assertSurveyCode(ch, code) {
+    if (ch.config.survey.qrOnly && normalizeCode(code ?? '') !== ch.qrCode) {
+      throw forbidden('Escanea el código QR de la encuesta para responderla.', 'qr_required')
+    }
+  }
+
+  const mySurveyAnswer = (row, ch) =>
+    db.get(
+      `SELECT id, answer, points_awarded FROM submissions
+        WHERE participant_id = :participantId AND challenge_id = :challengeId AND status = 'approved'`,
+      { participantId: row.id, challengeId: ch.id },
+    )
+
+  /** Cerrada = ya no se puede responder: recien ahi se muestran las correctas. */
+  const surveyClosed = (ev, ch) => ev.status === 'closed' || (!!ch.availableUntil && now() > ch.availableUntil)
+
+  function surveyHeader(ev, row, ch) {
+    const { ctx } = stateContext(ev, row)
+    return publicChallenge(ch, challengeState({ ...ch, visibility: 'visible' }, ctx), ctx.used)
+  }
+
+  // Preguntas para responder o, si ya respondio, sus respuestas y el resultado.
+  r.get('/events/:slug/challenges/:id/survey', (c) => {
+    const ev = eventBySlug(c.req.param('slug'))
+    const row = authenticate(c, ev)
+    const ch = surveyChallenge(ev, c)
+    const survey = ch.config.survey
+    const mine = mySurveyAnswer(row, ch)
+    if (mine) {
+      const saved = JSON.parse(mine.answer)
+      const closed = surveyClosed(ev, ch)
+      return c.json({
+        challenge: surveyHeader(ev, row, ch),
+        answered: true,
+        closed,
+        questions: publicQuestions(survey, { reveal: closed }),
+        answers: saved.answers,
+        result: { correct: saved.correct, total: saved.total, passed: saved.passed, pointsAwarded: mine.points_awarded },
+      })
+    }
+    assertSurveyCode(ch, c.req.query('code'))
+    assertCanSubmit(ev, row, ch, { reveal: true })
+    return c.json({ challenge: surveyHeader(ev, row, ch), answered: false, questions: publicQuestions(survey) })
+  })
+
+  // Un solo intento: se corrige aca y se aprueba sola. Sin el minimo de
+  // aciertos queda completada con 0 puntos.
+  r.post('/events/:slug/challenges/:id/answers', async (c) => {
+    const ev = eventBySlug(c.req.param('slug'))
+    const row = authenticate(c, ev)
+    requireOpen(ev)
+    limit(`submit:${row.id}`, 20, 60_000)
+    const ch = surveyChallenge(ev, c)
+    const body = await jsonBody(c)
+    assertSurveyCode(ch, body.code)
+    const graded = gradeSurvey(ch.config.survey, body.answers)
+    const id = db.tx(() => {
+      if (mySurveyAnswer(row, ch)) throw conflict('Ya respondiste esta encuesta.', 'already_done')
+      assertCanSubmit(ev, row, ch, { reveal: true })
+      const t = now()
+      return Number(
+        db.run(
+          `INSERT INTO submissions
+             (event_id, challenge_id, participant_id, status, points_awarded, answer, reviewed_at, created_at)
+           VALUES (:eventId, :challengeId, :participantId, 'approved', :points, :answer, :t, :t)`,
+          {
+            eventId: ev.id,
+            challengeId: ch.id,
+            participantId: row.id,
+            points: graded.passed ? ch.points : 0,
+            answer: JSON.stringify(graded),
+            t,
+          },
+        ).lastInsertRowid,
+      )
+    })
+    return c.json(
+      { result: { correct: graded.correct, total: graded.total, passed: graded.passed }, ...submissionResult(ev, row, id) },
+      201,
+    )
   })
 
   r.get('/events/:slug/ranking', (c) => {
@@ -564,6 +668,8 @@ export function participantRoutes(svc) {
       { id, participantId: row.id },
     )
     if (!photo) throw notFound('Este envío no existe.')
+    // Solo fotos: borrar una encuesta respondida permitiria volver a intentarla.
+    if (!photo.key) throw forbidden('Solo se pueden borrar las fotos.', 'not_deletable')
     db.run('DELETE FROM submissions WHERE id = :id', { id })
     await storage.remove(photo.key, photo.thumb_key)
     return c.json({ me: me(ev, row) })
