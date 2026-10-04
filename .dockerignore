@@ -5,6 +5,7 @@
 dist
 server/data
 backups
+.deploy
 **/.env
 **/*.log
 .claude

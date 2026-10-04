@@ -230,15 +230,62 @@ cd ~/rnr-quest && docker compose ps    # todo "Up", app (healthy)
 3. Imprimir los QR (Ajustes → Imprimir QRs): el de entrada en carteles, cada
    checkpoint en su lugar. Bajo cada QR va el código en texto.
 4. Probar con un teléfono **con datos móviles**: entrar, foto, QR, AR.
-5. El día: **Abrir evento**; moderadores con sesión iniciada (Moderar funciona
+5. El día: **pausar las actualizaciones** (`touch .deploy/pause`, sección 11) y **Abrir evento**; moderadores con sesión iniciada (Moderar funciona
    bien desde el teléfono); ranking en la pantalla grande (Ranking → Pantalla grande).
 6. Al terminar: **Cerrar evento** (congela el ranking; la galería sigue visible).
 
-## 11. Comandos útiles
+## 11. Actualizar con `git deploy` (por Tailscale)
+
+Para no entrar a la Pi cada vez: un comando en tu computadora hace el push y le
+avisa a la Pi que se actualice. La señal viaja solo por **Tailscale**; la Pi no
+escucha nada nuevo desde internet.
+
+```
+git deploy  →  push a GitHub  →  señal a http://<ip-tailscale>:8788  →  la Pi: backup, git pull, docker compose up
+```
+
+**En la Pi, una sola vez** (requiere Tailscale conectado):
+
+```bash
+cd ~/rnr-quest
+git pull
+./deploy/install-autodeploy.sh
+```
+
+Instala el servicio `sac-quest-deploy`, que escucha solo en la IP de Tailscale
+y exige un token, y al final imprime tres comandos `git config`.
+
+**En tu computadora, una sola vez**: pega esos tres comandos dentro de la
+carpeta del repo. El token queda en la configuración local de git; no se sube.
+
+**Desde entonces**, en vez de `git push`:
+
+```bash
+git deploy
+```
+
+Muestra el resultado al terminar: `Actualizado a <commit>`, o el registro si algo
+falló. Cada actualización hace antes un backup de la base. Un `git push` normal
+sigue funcionando y no actualiza la Pi; `git deploy --signal-only` manda solo la
+señal.
+
+| Para | En la Pi |
+|---|---|
+| **Pausar** las actualizaciones (días de evento) | `touch ~/rnr-quest/.deploy/pause` |
+| Reanudarlas | `rm ~/rnr-quest/.deploy/pause` |
+| Ver la última actualización | `cat ~/rnr-quest/.deploy/status` · detalle: `cat ~/rnr-quest/.deploy/log` |
+| Actualizar a mano | `./deploy/update.sh` |
+| El servicio no responde | `systemctl status sac-quest-deploy` · `journalctl -u sac-quest-deploy -n 30` |
+| Quitarlo | `sudo systemctl disable --now sac-quest-deploy` |
+
+Con la pausa puesta, `git deploy` sube el código a GitHub pero la Pi no cambia
+hasta que la quites y vuelvas a mandar la señal.
+
+## 12. Comandos útiles
 
 | Para | Comando (en `~/rnr-quest`) |
 |---|---|
-| Actualizar a la última versión | `git pull && docker compose up -d --build` (la base se migra sola) |
+| Actualizar a la última versión | `git deploy` desde tu computadora (sección 11), o aquí: `git pull && docker compose up -d --build` (la base se migra sola) |
 | Ver logs | `docker compose logs -f app` (o `cloudflared`) |
 | Reiniciar | `docker compose restart app` |
 | Aplicar cambios de `server/.env` | `docker compose up -d` (`restart` **no** relee el archivo) |
@@ -253,7 +300,7 @@ cd ~/rnr-quest && docker compose ps    # todo "Up", app (healthy)
 *Public Hostname* del túnel en Cloudflare, `docker compose up -d` y **reimprimir
 los QR**.
 
-## 12. Problemas comunes
+## 13. Problemas comunes
 
 | Síntoma | Revisar |
 |---|---|

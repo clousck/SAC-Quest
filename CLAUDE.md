@@ -22,6 +22,12 @@ guarda lo que no se deduce leyendo el código.
   trycloudflare para pruebas). Compose fija NODE_ENV/HOST/PORT/DATA_DIR/STATIC_DIR y pisa
   `server/.env`; el `.env` de la raíz solo lleva opciones de Docker (`RNR_*`, `COMPOSE_PROFILES`).
   Sin probar aún en la Pi: el PC del usuario no tiene Docker.
+- Actualización con **`git deploy`** (alias local → `deploy/push.sh`): push + señal HTTP con token a
+  `deploy/listener.py` (servicio `sac-quest-deploy`, Python de la Pi, escucha **solo en la IP de
+  Tailscale**, puerto 8788) → `deploy/update.sh` (backup, `git merge --ff-only`, `compose up --build`,
+  health). Estado en `.deploy/` (ignorado por git): `token`, `status`, `log`, `deployed`, `pause`.
+  El usuario no quiso SSH ni sondeo periódico. Pausar en días de evento: `touch .deploy/pause`.
+  En la Pi el repo está en `~/Git/sac-quest`.
 - Pages se dejó porque solo servía la página: el login daba 405 (POST a un hosting estático).
   `VITE_API_URL` sigue en el código pero no se usa.
 - Fotos **no públicas**: solo participantes del evento y organizadores.

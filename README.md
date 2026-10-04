@@ -57,7 +57,8 @@ docker compose --profile tunnel up -d --build
 docker compose exec app npm run create-admin -- --username admin
 ```
 
-Luego: `https://sacquest.penginexr.com/admin`. Actualizar: `git pull && docker compose up -d --build`.
+Luego: `https://sacquest.penginexr.com/admin`. Actualizar: `git pull && docker compose up -d --build`,
+o con un solo comando desde tu computadora (`git deploy`, por Tailscale; ver la guía).
 
 Guía paso a paso desde una Pi recién instalada (Docker, SSD, túnel, backups,
 checklist del evento, problemas comunes): **[docs/docker.md](docs/docker.md)**.
@@ -130,6 +131,7 @@ contacto con el backend
       storage.js                  fotos en disco
     server/scripts/               create-admin, seed-demo, backup, loadtest
     Dockerfile, docker-compose.yml   imagen (página + API) y túnel de Cloudflare
+    deploy/                       actualización con `git deploy` (señal por Tailscale)
     docs/docker.md                despliegue en detalle
 
 ### Rutas

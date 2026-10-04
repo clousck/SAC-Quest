@@ -28,6 +28,7 @@ dist-ssr
 server/data
 server/.env
 backups
+.deploy
 
 # Configuracion local del frontend (ver .env.example)
 .env
