@@ -354,10 +354,12 @@ function TeamScoreCard() {
           <label>
             Cuánto aporta cada uno de los mejores (%)
             <input value={f.top} onChange={set('top')} placeholder="100, 60, 40, 25, 15" required />
+            <MaxXp value={maxBest} />
           </label>
           <label>
             Bono de participación (% del máximo de los mejores)
             <input type="number" min="0" max="1000" value={f.participation} onChange={set('participation')} required />
+            <MaxXp value={maxParticipation} note={`con ${f.participationRef} activos`} />
           </label>
           <label>
             Integrantes activos para el bono completo
@@ -366,19 +368,14 @@ function TeamScoreCard() {
           <label>
             Retos de {label} (% del máximo de los mejores)
             <input type="number" min="0" max="1000" value={f.collective} onChange={set('collective')} required />
+            <MaxXp value={maxCollective} note={hasGoals ? 'cumpliéndolos todos' : 'aún no hay retos creados'} />
           </label>
         </div>
       </fieldset>
-      <p className="muted small">
-        XP máximo que puede sumar una {label} en cada parte, con los {possible} XP de los retos publicados hoy. Cambia al
-        editar los valores de arriba y al publicar o cambiar retos.
+      <p className="max-total">
+        Máximo total por {label}: <strong>{(maxBest + maxParticipation + maxCollective).toLocaleString('es-EC')} XP</strong>
+        <span className="muted small"> · con los {possible} XP de los retos publicados hoy</span>
       </p>
-      <div className="kpis">
-        <MaxTile label="Mejores" value={maxBest} />
-        <MaxTile label="Participación" value={maxParticipation} note={`con ${f.participationRef} activos`} />
-        <MaxTile label={`Retos de ${label}`} value={maxCollective} note={hasGoals ? 'cumpliéndolos todos' : 'aún no hay ninguno'} />
-        <MaxTile label="Total" value={maxBest + maxParticipation + maxCollective} />
-      </div>
       <p className="muted small">
         <strong>Mejores:</strong> el XP del mejor integrante cuenta completo y el de los siguientes, el porcentaje indicado.{' '}
         <strong>Participación:</strong> un bono que crece con cada integrante que tiene al menos un reto aprobado con puntos, cada vez un
@@ -396,13 +393,13 @@ function TeamScoreCard() {
   )
 }
 
-function MaxTile({ label, value, note }) {
+/** Maximo de XP que puede dar un campo de «XP por Rama»; va debajo del campo. */
+function MaxXp({ value, note }) {
   return (
-    <div className="stat-tile">
-      <span className="stat-label">{label}</span>
-      <span className="stat-value">{value.toLocaleString('es-EC')} XP</span>
-      {note && <span className="stat-note">{note}</span>}
-    </div>
+    <span className="field-max">
+      Máximo: <strong>{value.toLocaleString('es-EC')} XP</strong>
+      {note && ` (${note})`}
+    </span>
   )
 }
 

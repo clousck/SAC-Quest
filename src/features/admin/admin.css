@@ -183,6 +183,11 @@ details[open] summary { margin-bottom: 0.5rem; }
 .two-cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
 .two-cols h3, .two-cols h2 { margin-bottom: 0.6rem; }
 
+/* Maximos de XP por Rama, bajo cada campo de Ajustes. */
+.field-max { font-size: 0.85rem; color: var(--muted); }
+.field-max strong, .max-total strong { color: var(--accent); }
+.max-total { margin: 0; }
+
 /* --- resumen: stat tiles --- */
 .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 0.6rem; }
 .stat-tile {
