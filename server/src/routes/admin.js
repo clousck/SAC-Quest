@@ -6,6 +6,7 @@ import {
   hashPassword,
   randomCode,
   randomToken,
+  recoveryCode,
   sha256,
   sign,
   verifyPassword,
@@ -1135,6 +1136,19 @@ export function adminRoutes(svc) {
       banned: ['banned', Number],
     })
     return c.json({ ok: true })
+  })
+
+  // Codigo de recuperacion nuevo (el anterior deja de servir). La sesion que
+  // la persona ya tiene abierta en su telefono sigue funcionando.
+  r.post('/participants/:id/recovery-code', (c) => {
+    const p = db.get('SELECT * FROM participants WHERE id = :id', { id: int(c.req.param('id'), 'id') })
+    if (!p) throw notFound('Participante no encontrado.')
+    let code
+    do {
+      code = recoveryCode()
+    } while (db.get('SELECT 1 FROM participants WHERE event_id = :eventId AND recovery_code = :code', { eventId: p.event_id, code }))
+    db.run('UPDATE participants SET recovery_code = :code WHERE id = :id', { code, id: p.id })
+    return c.json({ recoveryCode: formatRecovery(code) })
   })
 
   // --- ranking y estadisticas ---

@@ -111,8 +111,6 @@
   height: 100%;
   border-radius: 50%;
   background: #fff;
-  color: #000;
-  font-weight: 700;
 }
 
 .shutter:active:not(:disabled) span { transform: scale(0.92); }
@@ -141,26 +139,7 @@
   background: transparent;
 }
 
-/* --- cuenta regresiva y flash --- */
-.countdown {
-  position: absolute;
-  inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 9rem;
-  font-weight: 800;
-  text-shadow: 0 4px 24px rgba(0, 0, 0, 0.7);
-  pointer-events: none;
-  animation: pop 1s ease-out;
-}
-
-@keyframes pop {
-  0% { transform: scale(1.6); opacity: 0; }
-  20% { transform: scale(1); opacity: 1; }
-  100% { transform: scale(0.9); opacity: 0.6; }
-}
-
+/* --- flash --- */
 .flash {
   position: absolute;
   inset: 0;

@@ -380,7 +380,7 @@ export class WattStage {
   /**
    * Arranca la sesion immersive-ar. Hay que llamarlo desde un toque del
    * usuario. `overlayRoot` es el elemento HTML que queda visible encima de
-   * la camara (botones, cuenta regresiva).
+   * la camara (botones).
    */
   async startAR(overlayRoot, { onPlaced, onEnd } = {}) {
     const session = await navigator.xr.requestSession('immersive-ar', {
@@ -454,10 +454,13 @@ export class WattStage {
   placeAt(hitMatrix) {
     const pos = new Vector3().setFromMatrixPosition(hitMatrix)
     const cam = this.renderer.xr.getCamera().position
-    if (!this.ar.placed) this.root.scale.setScalar(AR_HEIGHT)
+    // Solo la primera vez: tamaño real y mirando hacia el telefono. Al
+    // moverlo despues se respetan el tamaño y el giro que le dio la persona.
+    if (!this.ar.placed) {
+      this.root.scale.setScalar(AR_HEIGHT)
+      this.root.rotation.set(0, Math.atan2(cam.x - pos.x, cam.z - pos.z), 0)
+    }
     this.root.position.copy(pos)
-    // Mirando hacia el telefono.
-    this.root.rotation.set(0, Math.atan2(cam.x - pos.x, cam.z - pos.z), 0)
     this.root.visible = true
   }
 

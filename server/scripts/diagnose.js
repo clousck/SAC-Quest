@@ -7,7 +7,7 @@
 import { join } from 'node:path'
 import { DatabaseSync } from 'node:sqlite'
 import { loadConfig } from '../src/config.js'
-import { challengeState, participantStats, teamRanking, toChallenge, toEvent, usedSlots } from '../src/rules.js'
+import { challengeState, participantRanking, participantStats, possibleXp, teamRanking, toChallenge, toEvent, usedSlots } from '../src/rules.js'
 
 try {
   process.loadEnvFile()
@@ -87,6 +87,19 @@ for (const g of goals) {
     if (!people.length) continue
     console.log(`     ${tg.met ? '✅' : '❌'} ${t.name}: ${tg.count}/${g.members} · ${people.map((p) => `${p.alias} (${p.status})`).join(', ')}`)
   }
+}
+
+title('XP de Rama')
+console.log(`XP posible por persona: ${possibleXp(db, eventId)} · pesos: ${JSON.stringify(ev.settings.teamScore)}`)
+for (const t of ranking) {
+  console.log(
+    `${t.rank}. ${t.name}: ${t.score} XP = mejores ${t.performance} + participacion ${t.participation} + retos de Rama ${t.collective} · ${t.active} activos de ${t.members}`,
+  )
+}
+
+title('Ranking de personas')
+for (const p of participantRanking(db, eventId)) {
+  console.log(`${p.rank}. ${p.alias} (${p.team?.name ?? 'sin Rama'}): ${p.xp} XP, ${p.completed} retos`)
 }
 
 title('Ultimos 25 envios')

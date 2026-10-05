@@ -167,7 +167,7 @@ contacto con el backend
 # Booth de Watt
 
 Es la experiencia original: se abre la cámara con Watt encima, se elige una
-pose, se toma la foto con cuenta regresiva de 3 segundos y se comparte. En SAC
+pose, se toma la foto y se comparte. En SAC
 Quest es además el reto **AR**: en modo `challenge` la foto se envía como
 evidencia en vez de compartirse.
 
@@ -229,7 +229,7 @@ desde la galería». El modo cámara sigue disponible y entrega la foto directo.
 
     src/shared/inAppBrowser.js detecta el navegador interno de Instagram, Facebook y TikTok
     src/features/booth/
-      WattBooth.jsx            UI: poses, cuenta regresiva, vista previa
+      WattBooth.jsx            UI: poses, foto, vista previa
                                (mode "free": compartir · "challenge": onSubmit(blob))
       poses.js                 botones: clip del FBX → etiqueta
       faces.js                 botones de cara: textura → etiqueta

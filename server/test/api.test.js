@@ -352,6 +352,15 @@ describe('flujo completo', () => {
     assert.equal(rec.data.me.alias, 'Beto')
     assert.equal((await call('GET', '/events/sac-quest-2027/me', { token: beto })).status, 401, 'el token viejo queda inválido')
     beto = rec.data.token
+
+    // Codigo nuevo desde el panel: el anterior deja de servir y la sesion abierta sigue.
+    const people = (await call('GET', `/admin/events/${eventId}/participants`, { token: mod })).data.participants
+    const row = people.find((p) => p.alias === 'Beto')
+    const fresh = await call('POST', `/admin/participants/${row.id}/recovery-code`, { token: mod })
+    assert.match(fresh.data.recoveryCode, /^[A-Z2-9]{4}-[A-Z2-9]{4}$/)
+    assert.notEqual(fresh.data.recoveryCode, me.recoveryCode)
+    assert.equal((await call('POST', '/events/sac-quest-2027/recover', { body: { code: me.recoveryCode } })).status, 404)
+    assert.equal((await call('GET', '/events/sac-quest-2027/me', { token: beto })).data.me.recoveryCode, fresh.data.recoveryCode)
   })
 
   test('borrar mi foto quita los puntos', async () => {

@@ -15,7 +15,6 @@ const faceUrl = (id) => FACES.find((f) => f.id === id).url
 const ALL_FACE_URLS = FACES.map((f) => f.url)
 // ?nocam: no pide la camara (util para probar en escritorio / capturas).
 const NO_CAM = new URLSearchParams(window.location.search).has('nocam')
-const COUNTDOWN = 3
 const IN_APP = detectInAppBrowser()
 // Controles que no deben disparar el "tocar el piso" de WebXR.
 const UI_SELECTOR = 'button, .top-bar, .bottom-bar, .preview, .banner'
@@ -57,7 +56,6 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
   const [face, setFace] = useState(START_FACE)
   const [loaded, setLoaded] = useState(false)
   const [loadError, setLoadError] = useState(null)
-  const [count, setCount] = useState(null)
   const [flashKey, setFlashKey] = useState(0)
   const [photo, setPhoto] = useState(null)
   const [notice, setNotice] = useState(null)
@@ -172,7 +170,6 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
         onEnd: () => {
           setInAR(false)
           setPlaced(false)
-          setCount(null)
         },
       })
       setInAR(true)
@@ -189,7 +186,6 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
   // (apaga la camara). Una pagina abierta desde un QR no puede cerrar su
   // propia pestaña, asi que mostramos una pantalla de cierre.
   const exit = () => {
-    setCount(null)
     if (stageRef.current?.ar) {
       stageRef.current.endAR()
       return
@@ -223,20 +219,6 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
       setProcessing(false)
     }
   }, [videoRef, mirror, rotation, challenge])
-
-  // Cuenta regresiva 3 → 2 → 1 → foto.
-  useEffect(() => {
-    if (count === null) return
-    const id = setTimeout(() => {
-      if (count > 1) {
-        setCount(count - 1)
-      } else {
-        setCount(null)
-        capture()
-      }
-    }, 1000)
-    return () => clearTimeout(id)
-  }, [count, capture])
 
   const closePhoto = () => {
     URL.revokeObjectURL(photo.url)
@@ -282,8 +264,7 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
     onSubmit?.(photo.blob)
   }
 
-  const counting = count !== null
-  const canShoot = loaded && !counting && !processing && (!inAR || placed)
+  const canShoot = loaded && !processing && (!inAR || placed)
   const showARButton = !inAR && (arMode === 'webxr' || arMode === 'quicklook')
 
   let hint = null
@@ -441,19 +422,14 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
         {landscape && <p className="orientation-badge">Foto horizontal</p>}
         <button
           className="shutter"
-          onClick={() => setCount(COUNTDOWN)}
+          onClick={capture}
           disabled={!canShoot}
-          aria-label="Tomar foto en 3 segundos"
+          aria-label="Tomar foto"
         >
-          <span>{COUNTDOWN}s</span>
+          <span />
         </button>
       </footer>
 
-      {counting && (
-        <div className="countdown" key={count}>
-          {count}
-        </div>
-      )}
       {flashKey > 0 && <div className="flash" key={flashKey} />}
       {processing && <div className="overlay-msg processing">Procesando foto…</div>}
 

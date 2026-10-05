@@ -92,8 +92,17 @@ archivo solo guarda lo que no se deduce leyendo el código.
   dentro de la app + lista de retos de foto disponibles. `qrScan.js` usa `BarcodeDetector` si existe
   y, si no (iPhone), **jsQR** en un chunk aparte. Un QR leído solo navega a `/e/:slug/q/:código`
   (`QrClaim` hace el resto). Los QR impresos siguen sirviendo con la cámara del teléfono.
-- El visor del escáner es `QrScanner.jsx` (lo usan «Capturar» y el botón QR junto al campo del
-  código en `EnterCode`, que lee el QR del evento y entra directo).
+- El visor del escáner es `QrScanner.jsx`. `QrCodeField.jsx` = campo de código + botón QR a la
+  derecha que abre el visor debajo; lo usan `EnterCode` (QR del evento), los retos QR y las
+  encuestas «solo con QR». El usuario prefiere ese botón a un botón largo de «Escanear».
+- Booth: la foto se toma al tocar el obturador, **sin cuenta regresiva** (la quitó el usuario). En
+  AR (WebXR), tocar el piso para mover a Watt conserva el giro y el tamaño que le dio la persona;
+  solo la primera colocación lo orienta hacia el teléfono.
+- Panel → Participantes → «Código nuevo»: regenera el código de recuperación (el anterior deja de
+  servir; la sesión abierta sigue).
+- Iconos en `public/`: logo de IEEE (original: `public/ieee_icon.webp`, 512 px, transparente).
+  `icon-192/512` y `favicon.png` transparentes; `icon-maskable-512` y `apple-touch-icon` con fondo
+  blanco y margen (generados con System.Drawing desde PowerShell).
 - Al moderar **no se cambian los puntos**: aprobar da siempre los del reto (el servidor ignora
   `points` en `/submissions/:id/review`). Lo pidió el usuario.
 - `/` y las rutas desconocidas abren `EnterCode` (igual que `/entrar`); el booth sin evento quedó en
@@ -132,7 +141,8 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 28 pruebas (API completa + config)
+    cd server && npm test             # 28 pruebas
+    cd server && npm run diagnose -- <slug>   # estado de un evento (retos, Ramas, ranking, envíos) (API completa + config)
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
 

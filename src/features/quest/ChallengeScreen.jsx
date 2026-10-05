@@ -3,7 +3,9 @@ import { Link, useNavigate, useParams } from 'react-router'
 import { claimQr } from '../../api/quest'
 import { prepareImage } from '../../shared/imageResize'
 import { useToast } from '../../shared/Toast'
+import QrCodeField from './QrCodeField'
 import { useQuest } from './QuestContext'
+import { parseQuestQr } from './qrScan'
 import { Celebration, ChallengeIcon, ErrorBox, Screen, StateBadge, TYPE_LABEL, formatWhen } from './ui'
 import { sendEvidence } from './uploadQueue'
 
@@ -253,6 +255,7 @@ function SurveyAction({ challenge }) {
   const navigate = useNavigate()
   const [code, setCode] = useState('')
   const { survey } = challenge
+  const open = (value) => navigate(`/e/${slug}/s/${challenge.id}?c=${encodeURIComponent(value.trim())}`)
 
   if (!survey.qrOnly) {
     return (
@@ -265,30 +268,32 @@ function SurveyAction({ challenge }) {
   }
   return (
     <div className="evidence">
-      <div className="qr-help">
-        <p>📱 Escanea el código QR de la encuesta con el botón <strong>Capturar</strong> o con la cámara de tu teléfono.</p>
-        <Link className="btn primary block" to={`/e/${slug}/capturar`}>
-          Escanear QR
-        </Link>
-      </div>
       <form
         className="form inline-form"
         onSubmit={(e) => {
           e.preventDefault()
-          navigate(`/e/${slug}/s/${challenge.id}?c=${encodeURIComponent(code.trim())}`)
+          open(code)
         }}
       >
-        <label>
-          ¿No puedes escanear? Escribe el código que está bajo el QR
-          <input value={code} onChange={(e) => setCode(e.target.value)} autoCapitalize="characters" autoComplete="off" required />
-        </label>
+        <QrCodeField
+          label="Escanea el QR de la encuesta con el botón de la derecha o escribe el código que está debajo"
+          value={code}
+          onChange={setCode}
+          onScan={(text) => {
+            const res = parseQuestQr(text, slug)
+            if (!res.code) return res.problem
+            setCode(res.code)
+            open(res.code)
+          }}
+          hint="Apunta al código QR de la encuesta."
+        />
         <button className="btn primary block">Abrir encuesta</button>
       </form>
     </div>
   )
 }
 
-/** Checkpoint QR: se escanea con la camara del telefono; aca, codigo manual. */
+/** Checkpoint QR: se escanea con el boton del campo o se escribe su codigo. */
 function QrAction({ onDone }) {
   const { slug, token, refresh } = useQuest()
   const navigate = useNavigate()
@@ -296,14 +301,13 @@ function QrAction({ onDone }) {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState(null)
 
-  const submit = async (e) => {
-    e.preventDefault()
+  const claim = async (value) => {
     setBusy(true)
     setError(null)
     try {
       // Si el codigo es de otro checkpoint, igual cuenta: se festeja ese.
-      const res = await claimQr(slug, token, code)
-      if (res.survey) return navigate(`/e/${slug}/s/${res.survey.id}?c=${encodeURIComponent(code.trim())}`)
+      const res = await claimQr(slug, token, value)
+      if (res.survey) return navigate(`/e/${slug}/s/${res.survey.id}?c=${encodeURIComponent(value.trim())}`)
       onDone({
         icon: '📍',
         title: res.already
@@ -323,24 +327,26 @@ function QrAction({ onDone }) {
 
   return (
     <div className="evidence">
-      <div className="qr-help">
-        <p>📱 Busca el código QR en el lugar y escanéalo con el botón <strong>Capturar</strong> o con la cámara de tu teléfono.</p>
-        <Link className="btn primary block" to={`/e/${slug}/capturar`}>
-          Escanear QR
-        </Link>
-      </div>
-      <form className="form inline-form" onSubmit={submit}>
-        <label>
-          ¿No puedes escanear? Escribe el código impreso bajo el QR
-          <input
-            value={code}
-            onChange={(e) => setCode(e.target.value)}
-            autoCapitalize="characters"
-            autoComplete="off"
-            placeholder="Ej. K7PQ2M"
-            required
-          />
-        </label>
+      <form
+        className="form inline-form"
+        onSubmit={(e) => {
+          e.preventDefault()
+          claim(code)
+        }}
+      >
+        <QrCodeField
+          label="Busca el código QR en el lugar: escanéalo con el botón de la derecha o escribe el código impreso debajo"
+          value={code}
+          onChange={setCode}
+          onScan={(text) => {
+            const res = parseQuestQr(text, slug)
+            if (!res.code) return res.problem
+            setCode(res.code)
+            claim(res.code)
+          }}
+          hint="Apunta al código QR del checkpoint."
+          placeholder="Ej. K7PQ2M"
+        />
         <ErrorBox error={error} />
         <button className="btn primary block" disabled={busy}>
           {busy ? 'Verificando…' : 'Registrar checkpoint'}

@@ -111,7 +111,8 @@
   padding: 0.75rem 0.85rem;
   min-height: 48px;
 }
-/* Campo con un boton a su derecha (escanear el QR del evento). */
+.inline-form { display: flex; flex-direction: column; gap: 0.75rem; }
+/* Campo con un boton a su derecha para leer el codigo de un QR (QrCodeField). */
 .field-row { display: flex; gap: 0.5rem; }
 .field-row input { flex: 1; min-width: 0; }
 .scan-btn { flex: none; width: 48px; padding: 0; color: var(--text); }
@@ -261,8 +262,6 @@
 .evidence-preview img { display: block; width: 100%; max-height: 45vh; object-fit: contain; }
 .upload-progress { display: flex; flex-direction: column; gap: 0.3rem; }
 .upload-progress p { margin: 0; text-align: center; }
-.qr-help { display: flex; flex-direction: column; gap: 0.75rem; padding: 1rem; border-radius: 14px; background: var(--card); text-align: center; }
-.qr-help p { margin: 0; }
 
 .booth-layer { position: fixed; inset: 0; z-index: 50; background: #000; }
 

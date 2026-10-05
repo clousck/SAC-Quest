@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from 'react-router'
-import { listParticipants, listTeams, updateParticipant } from '../../api/admin'
+import { listParticipants, listTeams, resetRecoveryCode, updateParticipant } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, Spinner } from '../quest/ui'
 import { useEventAdmin } from './AdminContext'
@@ -29,6 +29,17 @@ export default function ParticipantsAdmin() {
     }
   }
 
+  const newCode = async (p) => {
+    if (!window.confirm(`¿Dar un código nuevo a ${p.alias}? El código ${p.recoveryCode} dejará de servir.`)) return
+    setActionError(null)
+    try {
+      await resetRecoveryCode(p.id)
+      reload()
+    } catch (e) {
+      setActionError(e)
+    }
+  }
+
   return (
     <section className="admin-page">
       <div className="toolbar">
@@ -37,7 +48,7 @@ export default function ParticipantsAdmin() {
       </div>
       <p className="muted small">
         ¿Alguien perdió su sesión? Dale su <strong>código de recuperación</strong>: lo escribe en «¿Ya participaste desde otro
-        teléfono?».
+        teléfono?». Con «Código nuevo» se le genera otro y el anterior deja de servir.
       </p>
       <ErrorBox error={error || actionError} retry={error ? reload : null} />
       {loading && !data && <Spinner />}
@@ -73,6 +84,9 @@ export default function ParticipantsAdmin() {
                   <td className="actions-cell">
                     <button className="btn small" onClick={() => setEditing(p.id)}>
                       Editar
+                    </button>
+                    <button className="btn small" onClick={() => newCode(p)}>
+                      Código nuevo
                     </button>
                     <button
                       className="btn small"

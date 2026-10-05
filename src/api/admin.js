@@ -83,6 +83,7 @@ export const deleteSubmission = (id) => del(`/submissions/${id}`)
 
 export const listParticipants = (eventId) => call(`/events/${eventId}/participants`)
 export const updateParticipant = (id, body) => patch(`/participants/${id}`, body)
+export const resetRecoveryCode = (id) => post(`/participants/${id}/recovery-code`)
 
 export const getRanking = (eventId) => call(`/events/${eventId}/ranking`)
 export const getStats = (eventId) => call(`/events/${eventId}/stats`)
