@@ -42,7 +42,8 @@ participantes, ver rankings y resultados, descargar).
 ## Durante el evento
 
 - **Ajustes → Abrir evento** al empezar.
-- **Moderar**: aparece una foto a la vez. Aprobar suma los puntos; rechazar pide
+- **Moderar**: aparece una foto a la vez. Aprobar suma los puntos del reto (no
+  se pueden cambiar al moderar); rechazar pide
   un motivo y la persona puede volver a intentarlo. Funciona bien desde el
   teléfono. Se puede filtrar por reto para repartirse el trabajo.
 - **Abrir y cerrar retos al momento** (lista de Retos, en checkpoints y encuestas):
@@ -59,7 +60,8 @@ participantes, ver rankings y resultados, descargar).
 - **Ranking → Pantalla grande**: para proyectar; se actualiza sola.
 - **Participantes**: cambiar de Rama, corregir un nombre o **suspender** a
   alguien (desaparece del ranking y de la galería). Ahí está también el
-  **código de recuperación** de cada persona, por si cambia de teléfono.
+  **código de recuperación** de cada persona, por si cambia de teléfono. Con
+  **Código nuevo** se le genera otro y el anterior deja de servir.
 
 ## Problemas frecuentes de los participantes
 
@@ -67,7 +69,7 @@ participantes, ver rankings y resultados, descargar).
 |---|---|
 | Cambió de teléfono o se le borró la sesión | Entrar de nuevo → «¿Participaste? Entra con tu código de recuperación» (el código está en Participantes) |
 | La cámara se ve en negro | Abrió el enlace desde Instagram, Facebook o TikTok: abrirlo en Chrome o Safari |
-| «Escanea el código QR de la encuesta» | Escanear el QR proyectado o escribir el código que está debajo |
+| No puede abrir una encuesta que pide su QR | Escanear el QR proyectado con el botón de QR del reto (o con **Capturar**) o escribir el código que está debajo |
 | Subió la foto equivocada | Puede borrarla desde su perfil y volver a enviarla |
 | Sin señal al enviar la foto | Queda guardada en el teléfono y se envía sola cuando vuelve la conexión |
 
@@ -90,7 +92,8 @@ Está en las mismas unidades que el XP de las personas y suma tres partes:
 
 El bono de participación y los retos de Rama pueden valer, cada uno, hasta la
 mitad de lo máximo que pueden sumar los mejores (los cinco con todos los retos
-del evento). Esos porcentajes se cambian en Ajustes → XP por Rama.
+del evento). Esos porcentajes se cambian en Ajustes → XP por Rama, que además
+muestra el XP máximo de cada parte con los retos publicados en ese momento.
 
 Los inscritos que no participan no suman nada. El XP de cada persona no cambia.
 Con pocos retos en el evento es fácil que varias Ramas lleguen cerca del máximo:

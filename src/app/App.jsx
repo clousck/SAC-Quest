@@ -22,9 +22,9 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={loading}>
         <Routes>
-          {/* La raiz pide el codigo del evento; /entrar sigue en carteles y guias. */}
+          {/* La raiz pide el codigo del evento. Cualquier ruta desconocida
+              (tambien el antiguo /entrar) cae en lo mismo, al final. */}
           <Route path="/" element={<EnterCode />} />
-          <Route path="/entrar" element={<EnterCode />} />
           {/* El booth suelto (sin evento) queda en /watt. */}
           <Route path="/watt" element={<WattBooth />} />
           <Route path="/e/:slug/watt" element={<EventBooth />} />

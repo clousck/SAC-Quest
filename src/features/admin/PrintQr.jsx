@@ -34,7 +34,7 @@ export default function PrintQr() {
             <QrImage value={eventJoinUrl(event)} size={260} />
             <p>Escanea con la cámara de tu teléfono</p>
             <p className="print-code">
-              {appHost()}/entrar · código <strong>{event.joinCode}</strong>
+              {appHost()} · código <strong>{event.joinCode}</strong>
             </p>
           </div>
         )}

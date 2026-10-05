@@ -6,7 +6,7 @@ import { session } from './session'
 import { ErrorBox } from './ui'
 import './quest.css'
 
-/** / y /entrar: para quien no escaneo el QR y tiene el codigo del cartel. */
+/** La raiz del sitio: para quien no escaneo el QR y tiene el codigo del cartel. */
 export default function EnterCode() {
   const navigate = useNavigate()
   const [code, setCode] = useState('')

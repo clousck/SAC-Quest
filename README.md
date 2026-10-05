@@ -149,7 +149,7 @@ contacto con el backend
     server/scripts/               create-admin, seed-demo, backup, loadtest
     Dockerfile, docker-compose.yml   imagen (página + API) y túnel de Cloudflare
     deploy/                       actualización con `git deploy` (señal por Tailscale)
-    docs/                         guías: servidor, organizadores, reglas, ensayo
+    docs/                         guías: servidor, organizadores, reglas (y su PDF), ensayo
 
 ### Rutas
 
@@ -159,7 +159,7 @@ contacto con el backend
 | `/e/:evento/q/:código` | QR impreso de un checkpoint o de una encuesta |
 | `/e/:evento/s/:id` | encuesta |
 | `/e/:evento/capturar` | botón central: escáner de QR y retos de foto |
-| `/` y `/entrar` | entrar escribiendo el código del evento |
+| `/` | entrar escribiendo el código del evento o escaneando su QR |
 | `/e/:evento/watt` | booth libre con Watt |
 | `/watt` | booth de Watt sin evento |
 | `/admin` | panel |

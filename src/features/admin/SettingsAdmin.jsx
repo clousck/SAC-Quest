@@ -117,7 +117,7 @@ function AccessCard() {
       <p className="code-text">{event.joinCode}</p>
       <p className="muted small break">{url}</p>
       <p className="muted small">
-        El QR ya incluye el código. Sin QR, se entra en <strong>{appHost()}/entrar</strong> con el código. Solo quien lo
+        El QR ya incluye el código. Sin QR, se entra en <strong>{appHost()}</strong> con el código. Solo quien lo
         tenga puede unirse y ver la galería.
       </p>
       <div className="row">
@@ -307,6 +307,21 @@ function TeamScoreCard() {
     }
   })
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
+  const challenges = useAsync(() => listChallenges(event.id), [event.id])
+  const goals = useAsync(() => listTeamGoals(event.id), [event.id])
+
+  // Maximos con lo que hay escrito en el formulario (mismo calculo que
+  // teamRanking en el servidor): cambian al editar, antes de guardar.
+  const weights = f.top
+    .split(',')
+    .map((w) => Number(w) / 100)
+    .filter((w) => w > 0)
+  // XP que puede juntar una persona: todos los retos publicados.
+  const possible = (challenges.data?.challenges ?? []).filter((c) => c.status !== 'draft').reduce((sum, c) => sum + c.points, 0)
+  const maxBest = Math.round(weights.reduce((a, b) => a + b, 0) * possible)
+  const maxParticipation = Math.round((maxBest * (Number(f.participation) || 0)) / 100)
+  const hasGoals = (goals.data?.goals.length ?? 0) > 0
+  const maxCollective = hasGoals ? Math.round((maxBest * (Number(f.collective) || 0)) / 100) : 0
 
   const submit = (e) => {
     e.preventDefault()
@@ -322,10 +337,7 @@ function TeamScoreCard() {
           participation: Number(f.participation),
           collective: Number(f.collective),
           participationRef: Number(f.participationRef),
-          top: f.top
-            .split(',')
-            .map((w) => Number(w) / 100)
-            .filter((w) => w > 0),
+          top: weights,
         },
       },
     })
@@ -358,6 +370,16 @@ function TeamScoreCard() {
         </div>
       </fieldset>
       <p className="muted small">
+        XP máximo que puede sumar una {label} en cada parte, con los {possible} XP de los retos publicados hoy. Cambia al
+        editar los valores de arriba y al publicar o cambiar retos.
+      </p>
+      <div className="kpis">
+        <MaxTile label="Mejores" value={maxBest} />
+        <MaxTile label="Participación" value={maxParticipation} note={`con ${f.participationRef} activos`} />
+        <MaxTile label={`Retos de ${label}`} value={maxCollective} note={hasGoals ? 'cumpliéndolos todos' : 'aún no hay ninguno'} />
+        <MaxTile label="Total" value={maxBest + maxParticipation + maxCollective} />
+      </div>
+      <p className="muted small">
         <strong>Mejores:</strong> el XP del mejor integrante cuenta completo y el de los siguientes, el porcentaje indicado.{' '}
         <strong>Participación:</strong> un bono que crece con cada integrante que tiene al menos un reto aprobado con puntos, cada vez un
         poco menos. <strong>Retos de {label}:</strong> ver abajo. Los dos porcentajes se miden frente a lo máximo que pueden sumar los
@@ -371,6 +393,16 @@ function TeamScoreCard() {
         </div>
       )}
     </form>
+  )
+}
+
+function MaxTile({ label, value, note }) {
+  return (
+    <div className="stat-tile">
+      <span className="stat-label">{label}</span>
+      <span className="stat-value">{value.toLocaleString('es-EC')} XP</span>
+      {note && <span className="stat-note">{note}</span>}
+    </div>
   )
 }
 

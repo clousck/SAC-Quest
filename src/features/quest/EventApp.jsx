@@ -55,7 +55,7 @@ function EventRoot() {
       <div className="screen center">
         <h1>Evento no disponible</h1>
         <ErrorBox error={eventQ.error} retry={eventQ.error.status === 404 ? null : eventQ.reload} />
-        <Link className="btn" to="/entrar">
+        <Link className="btn" to="/">
           Ingresar otro código
         </Link>
       </div>

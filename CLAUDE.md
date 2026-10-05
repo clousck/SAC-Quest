@@ -4,7 +4,9 @@ SAC Quest: gamificación web para eventos de IEEE Ecuador. Nació como el booth 
 "Foto con Watt" y evolucionó sin reescribirse. Qué hace, rutas, comandos y
 estructura: **README.md**. Guías en `docs/`: servidor (`docker.md`), panel
 (`organizadores.md`), participantes (`reglas.md`), ensayo (`ensayo.md`). Este
-archivo solo guarda lo que no se deduce leyendo el código.
+archivo solo guarda lo que no se deduce leyendo el código. `docs/reglas.pdf` es la versión para compartir de
+`reglas.md`: al cambiar las reglas, regenerarlo con `node docs/reglas-pdf.mjs` (usa `npx marked` y Edge
+sin ventana) y subir los dos.
 
 ## Usuario y contexto
 - Eventos de IEEE Ecuador, multi-evento real (los eventos se crean en el panel). ~100 inscritos
@@ -105,8 +107,11 @@ archivo solo guarda lo que no se deduce leyendo el código.
   blanco y margen (generados con System.Drawing desde PowerShell).
 - Al moderar **no se cambian los puntos**: aprobar da siempre los del reto (el servidor ignora
   `points` en `/submissions/:id/review`). Lo pidió el usuario.
-- `/` y las rutas desconocidas abren `EnterCode` (igual que `/entrar`); el booth sin evento quedó en
-  `/watt`.
+- `/` y las rutas desconocidas abren `EnterCode`; el booth sin evento quedó en `/watt`. `/entrar`
+  ya no se usa ni se menciona (el usuario lo pidió): sigue abriendo lo mismo solo por ser una ruta
+  desconocida.
+- Ajustes → «XP por Rama» muestra el máximo de cada parte calculado en el navegador con los valores
+  del formulario (misma cuenta que `teamRanking`): si cambia la fórmula, cambiar las dos.
 
 ## Trampas conocidas (no repetir)
 - **Límites por IP altos** en join/recover/join-codes: todo el wifi del evento sale por una IP (NAT).

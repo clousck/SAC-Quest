@@ -4,11 +4,13 @@ Para compartir con los participantes antes del evento.
 
 ## Entrar
 
-1. Escanea el QR del evento con la cámara de tu teléfono (o entra a
-   `sacquest.penginexr.com/entrar` y escribe el código).
+1. Escanea el QR del evento con la cámara de tu teléfono. También puedes entrar
+   a `sacquest.penginexr.com` y escribir el código del evento, o tocar el botón
+   de QR que está junto al campo para escanearlo desde ahí.
 2. Elige un nombre y tu Rama. No hace falta instalar nada ni crear una cuenta.
 3. En tu **Perfil** hay un **código de recuperación**: anótalo. Con él recuperas
-   tu progreso si cambias de teléfono.
+   tu progreso si cambias de teléfono. Si lo pierdes, un organizador puede darte
+   uno nuevo.
 
 Abre el enlace en **Chrome o Safari**. Si lo abres desde Instagram, Facebook o
 TikTok, la cámara puede no funcionar. Para volver rápido, agrégalo a tu pantalla
@@ -20,9 +22,11 @@ de inicio: en el menú del navegador, «Agregar a pantalla de inicio».
 |---|---|---|
 | 📷 Foto | Tomas la foto que pide el reto | Cuando un organizador la aprueba |
 | 🐱 AR con Watt | Te tomas una foto con Watt | Cuando un organizador la aprueba |
-| 📍 Checkpoint QR | Escaneas un QR que está en el lugar (botón central **Capturar**) | Al instante |
+| 📍 Checkpoint QR | Escaneas un QR que está en el lugar | Al instante |
 | 📝 Encuesta | Respondes sobre una charla | Al instante |
 
+- El botón redondo del centro, **Capturar**, abre la cámara para escanear
+  cualquier QR del evento y muestra los retos de foto que tienes disponibles.
 - Algunos retos están **bloqueados** hasta completar otro, y algunos son
   **secretos**: aparecen cuando encuentras su QR.
 - Hay retos con **horario** o con **cupo limitado**: los primeros en llegar ganan.
