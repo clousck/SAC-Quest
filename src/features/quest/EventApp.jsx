@@ -206,7 +206,7 @@ function Joined({ slug, token, eventData, signOut }) {
 
   return (
     <QuestContext.Provider value={ctx}>
-      {ctx.event.status === 'closed' && <div className="event-closed">🏁 El evento terminó. ¡Gracias por participar!</div>}
+      {home.event.status === 'closed' && <div className="event-closed">🏁 El evento terminó. ¡Gracias por participar!</div>}
       <main className={tabs ? 'quest-main with-tabs' : 'quest-main'}>
         <Routes>
           <Route index element={<HomeScreen />} />

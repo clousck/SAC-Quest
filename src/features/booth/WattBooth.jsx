@@ -222,7 +222,7 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
     } finally {
       setProcessing(false)
     }
-  }, [videoRef, mirror, rotation])
+  }, [videoRef, mirror, rotation, challenge])
 
   // Cuenta regresiva 3 → 2 → 1 → foto.
   useEffect(() => {

@@ -103,7 +103,7 @@ archivo solo guarda lo que no se deduce leyendo el código.
 
 ## Verificar cambios
     cd server && npm test             # 27 pruebas (API completa + config)
-    npx oxlint && npm run build       # 0 errores esperados (hay warnings de estilo conocidos)
+    npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
 
 ## Estado (2026-10-05)
@@ -112,5 +112,5 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - Probado por el usuario en iPhone y Android (funcionalidad). Sin probar: Quick Look dentro de un
   reto (cambio del 2026-10-05) y el conjunto con varias personas (ver `docs/ensayo.md`).
 - **Pendiente**: ensayo con 10 personas; backup fuera de la microSD (el usuario lo pospuso);
-  puntos otorgados por el staff para torneos (propuesto, sin respuesta). Descartado por el
-  usuario: repartir la cola de moderación (cada moderador filtra por su reto).
+  Descartado por el usuario: repartir la cola de moderación (cada moderador filtra por su reto)
+  y puntos otorgados por el staff para torneos.

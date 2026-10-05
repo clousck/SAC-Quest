@@ -23,11 +23,13 @@ export function useAsync(fn, deps) {
     }
   }, [])
 
+  // Las dependencias las pasa quien llama, como en useEffect.
+  /* eslint-disable react-hooks/exhaustive-deps */
   useEffect(() => {
     setState({ data: null, error: null, loading: true })
     reload()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, deps)
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const setData = useCallback((update) => {
     setState((s) => ({ ...s, data: typeof update === 'function' ? update(s.data) : update }))
