@@ -25,6 +25,16 @@ archivo solo guarda lo que no se deduce leyendo el código.
   health). Estado en `.deploy/` (ignorado por git): `token`, `status`, `log`, `deployed`, `pause`.
   El usuario no quiso SSH ni sondeo periódico. Pausar en días de evento: `touch .deploy/pause`.
   `main` va directo a producción; GitHub Actions (`.github/workflows/pruebas.yml`) solo avisa.
+- **`git deploy` en un equipo nuevo** (el usuario espera que Claude pueda desplegar): el equipo
+  debe estar en el Tailscale del usuario (la Pi es `raspberrypi`, `100.106.155.106`). La
+  configuración vive en el `.git/config` local y no viaja con el repo:
+      git config sacquest.deployurl http://100.106.155.106:8788
+      git config sacquest.deploytoken <token>
+      git config alias.deploy '!sh deploy/push.sh'
+  El token está en la Pi (`cat ~/Git/sac-quest/.deploy/token`; se entra con
+  `ssh victorees@raspberrypi`) o en el archivo que el usuario se llevó del equipo anterior.
+  **El repo es público: el token no se escribe en ningún archivo versionado.** Comprobar con
+  `git deploy --signal-only` (no hace push). Si el token no está, pedírselo al usuario.
 - Fotos **no públicas**: solo participantes del evento y organizadores.
 - El usuario escribe en español y prefiere: revisar diseño antes de cambios grandes, no
   reescribir, explicaciones claras y cortas. Commits en `main` (historial en español); pide el
@@ -111,6 +121,18 @@ archivo solo guarda lo que no se deduce leyendo el código.
   loadtest, XP de Rama, valores de reto, encuestas, avisos, `git deploy`, CI.
 - Probado por el usuario en iPhone y Android (funcionalidad). Sin probar: Quick Look dentro de un
   reto (cambio del 2026-10-05) y el conjunto con varias personas (ver `docs/ensayo.md`).
-- **Pendiente**: ensayo con 10 personas; backup fuera de la microSD (el usuario lo pospuso);
-  Descartado por el usuario: repartir la cola de moderación (cada moderador filtra por su reto)
-  y puntos otorgados por el staff para torneos.
+- **Lo primero a confirmar con el usuario**: si ya hizo en la Pi el paso manual del cambio de
+  nombre del proyecto de Docker (copiar el volumen viejo a `sac-quest_sac-data`; los comandos
+  están en la conversación del 2026-10-05 y se resumen abajo). Hasta entonces producción sigue en
+  una versión anterior y **`git deploy` fallaría** (el puerto 8787 lo ocupa el proyecto viejo):
+      docker compose exec -T app npm run backup -- /backups && docker compose --profile tunnel down
+      git pull && sed -i 's/^[A-Z]*_\(DATA_DIR\|BACKUP_DIR\|BIND\)=/SAC_\1=/' .env
+      docker volume create sac-quest_sac-data
+      docker run --rm -v <volumen-viejo>:/from -v sac-quest_sac-data:/to busybox cp -a /from/. /to/
+      docker compose up -d --build
+  (`docker volume ls` muestra el volumen viejo). Sin probar en Docker.
+- Después de eso, en el panel: asignar un valor a cada reto existente (aparecen como «Actual ·
+  N XP») y revisar el reto de Rama «Cinco con Watt» (pide 3 integrantes y el texto dice 5).
+- **Pendiente**: ensayo con 10 personas; backup fuera de la microSD (el usuario lo pospuso).
+- **Descartado por el usuario**: repartir la cola de moderación (cada moderador filtra por su
+  reto) y puntos otorgados por el staff para torneos.
