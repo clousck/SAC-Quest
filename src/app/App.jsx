@@ -22,13 +22,15 @@ export default function App() {
     <BrowserRouter>
       <Suspense fallback={loading}>
         <Routes>
-          {/* La raiz sigue siendo el booth: hay QRs impresos que apuntan aca. */}
-          <Route path="/" element={<WattBooth />} />
+          {/* La raiz pide el codigo del evento; /entrar sigue en carteles y guias. */}
+          <Route path="/" element={<EnterCode />} />
           <Route path="/entrar" element={<EnterCode />} />
+          {/* El booth suelto (sin evento) queda en /watt. */}
+          <Route path="/watt" element={<WattBooth />} />
           <Route path="/e/:slug/watt" element={<EventBooth />} />
           <Route path="/e/:slug/*" element={<EventApp />} />
           <Route path="/admin/*" element={<AdminApp />} />
-          <Route path="*" element={<WattBooth />} />
+          <Route path="*" element={<EnterCode />} />
         </Routes>
       </Suspense>
     </BrowserRouter>

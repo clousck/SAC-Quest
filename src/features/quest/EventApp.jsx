@@ -3,6 +3,7 @@ import { Link, NavLink, Route, Routes, useLocation, useParams } from 'react-rout
 import { getChallenges, getEvent } from '../../api/quest'
 import { ToastProvider, useToast } from '../../shared/Toast'
 import { useAsync } from '../../shared/useAsync'
+import CaptureScreen from './CaptureScreen'
 import ChallengeScreen from './ChallengeScreen'
 import GalleryScreen from './GalleryScreen'
 import HomeScreen from './HomeScreen'
@@ -116,6 +117,17 @@ function announceChanges(prev, next, toast) {
   }
 }
 
+/** Camara dentro de un visor: sirve para "foto" y para "escanear QR". */
+function CaptureIcon() {
+  return (
+    <svg viewBox="0 0 24 24" width="30" height="30" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+      <path d="M3 8V5a2 2 0 0 1 2-2h3M16 3h3a2 2 0 0 1 2 2v3M21 16v3a2 2 0 0 1-2 2h-3M8 21H5a2 2 0 0 1-2-2v-3" />
+      <path d="M7.5 10.2a1 1 0 0 1 1-1h1.1l.9-1.2h3l.9 1.2h1.1a1 1 0 0 1 1 1v4.6a1 1 0 0 1-1 1h-7a1 1 0 0 1-1-1z" />
+      <circle cx="12" cy="12.6" r="1.7" />
+    </svg>
+  )
+}
+
 function Joined({ slug, token, eventData, signOut }) {
   const toast = useToast()
   const location = useLocation()
@@ -213,6 +225,7 @@ function Joined({ slug, token, eventData, signOut }) {
           <Route path="r/:id" element={<ChallengeScreen />} />
           <Route path="q/:code" element={<QrClaim />} />
           <Route path="s/:id" element={<SurveyScreen />} />
+          <Route path="capturar" element={<CaptureScreen />} />
           <Route path="ranking" element={<RankingScreen />} />
           <Route path="galeria" element={<GalleryScreen />} />
           <Route path="perfil" element={<ProfileScreen />} />
@@ -226,6 +239,12 @@ function Joined({ slug, token, eventData, signOut }) {
           </NavLink>
           <NavLink to={`/e/${slug}/ranking`}>
             <span aria-hidden="true">🏆</span>Ranking
+          </NavLink>
+          <NavLink to={`/e/${slug}/capturar`} className="tab-capture">
+            <span className="tab-fab" aria-hidden="true">
+              <CaptureIcon />
+            </span>
+            Capturar
           </NavLink>
           <NavLink to={`/e/${slug}/galeria`}>
             <span aria-hidden="true">🖼️</span>Galería

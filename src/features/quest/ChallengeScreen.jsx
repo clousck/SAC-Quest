@@ -266,7 +266,10 @@ function SurveyAction({ challenge }) {
   return (
     <div className="evidence">
       <div className="qr-help">
-        <p>📱 Escanea el código QR de la encuesta con la <strong>cámara de tu teléfono</strong> para responderla.</p>
+        <p>📱 Escanea el código QR de la encuesta con el botón <strong>Capturar</strong> o con la cámara de tu teléfono.</p>
+        <Link className="btn primary block" to={`/e/${slug}/capturar`}>
+          Escanear QR
+        </Link>
       </div>
       <form
         className="form inline-form"
@@ -321,7 +324,10 @@ function QrAction({ onDone }) {
   return (
     <div className="evidence">
       <div className="qr-help">
-        <p>📱 Busca el código QR en el lugar y escanéalo con la <strong>cámara de tu teléfono</strong>.</p>
+        <p>📱 Busca el código QR en el lugar y escanéalo con el botón <strong>Capturar</strong> o con la cámara de tu teléfono.</p>
+        <Link className="btn primary block" to={`/e/${slug}/capturar`}>
+          Escanear QR
+        </Link>
       </div>
       <form className="form inline-form" onSubmit={submit}>
         <label>

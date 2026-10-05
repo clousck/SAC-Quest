@@ -87,6 +87,12 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - "Reto secreto" es una **visibilidad**, no un tipo. Tipos implementados: PHOTO, AR, QR,
   TRIVIA (el esquema ya admite TEXT).
 - Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar).
+- **Botón central «Capturar»** de la barra (`/e/:slug/capturar`, `CaptureScreen.jsx`): escáner de QR
+  dentro de la app + lista de retos de foto disponibles. `qrScan.js` usa `BarcodeDetector` si existe
+  y, si no (iPhone), **jsQR** en un chunk aparte. Un QR leído solo navega a `/e/:slug/q/:código`
+  (`QrClaim` hace el resto). Los QR impresos siguen sirviendo con la cámara del teléfono.
+- `/` y las rutas desconocidas abren `EnterCode` (igual que `/entrar`); el booth sin evento quedó en
+  `/watt`.
 
 ## Trampas conocidas (no repetir)
 - **Límites por IP altos** en join/recover/join-codes: todo el wifi del evento sale por una IP (NAT).
@@ -101,7 +107,10 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - Los QR del panel usan `appUrl` (de `APP_DOMAIN`, vía `/api/admin/me`), no `window.location`.
 - SQLite no deja borrar una columna con CHECK (p. ej. `difficulty`): si deja de usarse, se ignora.
 - En el PC del usuario (Windows): hay Python 3.12 y Edge; no hay Docker, `flock` ni `pkill`. Las
-  pantallas se pueden revisar con Edge headless por CDP (servidor con datos de `seed-demo`).
+  pantallas se pueden revisar con Edge headless por CDP (servidor con datos de `seed-demo`; Node 24
+  trae `WebSocket`, no hace falta puppeteer; la cámara se simula reemplazando `getUserMedia` por un
+  `canvas.captureStream()`). El Control de aplicaciones de Windows bloquea el binario de `oxlint`
+  en ese PC: el lint lo corre el CI.
   Para editar archivos con muchos caracteres especiales, usar Edit/Write y no scripts con comillas.
 
 ## Convenciones
@@ -119,8 +128,10 @@ archivo solo guarda lo que no se deduce leyendo el código.
 ## Estado (2026-10-05)
 - En producción en la Pi. Implementado: API, app del participante, panel, cola offline, backups,
   loadtest, XP de Rama, valores de reto, encuestas, avisos, `git deploy`, CI.
-- Probado por el usuario en iPhone y Android (funcionalidad). Sin probar: Quick Look dentro de un
-  reto (cambio del 2026-10-05) y el conjunto con varias personas (ver `docs/ensayo.md`).
+- Probado por el usuario en iPhone y Android (funcionalidad); él mismo dice que faltan más pruebas.
+  Sin probar: Quick Look dentro de un reto (cambio del 2026-10-05), el conjunto con varias personas
+  (ver `docs/ensayo.md`) y el **escáner de «Capturar» en teléfonos reales** (2026-10-05: solo
+  verificado en Edge headless con un QR simulado, ruta jsQR).
 - **Lo primero a confirmar con el usuario**: si ya hizo en la Pi el paso manual del cambio de
   nombre del proyecto de Docker (copiar el volumen viejo a `sac-quest_sac-data`; los comandos
   están en la conversación del 2026-10-05 y se resumen abajo). Hasta entonces producción sigue en

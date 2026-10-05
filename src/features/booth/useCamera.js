@@ -22,13 +22,14 @@ const FRAME_TIMEOUT = 5000
 /**
  * Abre la camara (`user` = frontal, `environment` = trasera) y la conecta al
  * <video> de videoRef. `enabled: false` no pide la camara (modo ?nocam).
+ * `size` debe ser una constante: para leer un QR no hace falta 4K.
  *
  * Estados: starting → ready | needs-tap | error.
  * `needs-tap`: el navegador bloqueo la reproduccion automatica (iPhone en
  * modo de bajo consumo, por ejemplo) y hay que llamar a resume() desde un
  * toque del usuario.
  */
-export function useCamera(facing, enabled = true) {
+export function useCamera(facing, enabled = true, size = PREVIEW_SIZE) {
   const videoRef = useRef(null)
   const [state, setState] = useState({ status: 'starting', error: null })
   const [attempt, setAttempt] = useState(0)
@@ -45,7 +46,7 @@ export function useCamera(facing, enabled = true) {
             name: 'Unsupported',
           })
         }
-        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, ...PREVIEW_SIZE }, audio: false })
+        stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: facing, ...size }, audio: false })
         if (cancelled) return
         const video = videoRef.current
         video.srcObject = stream
@@ -70,7 +71,7 @@ export function useCamera(facing, enabled = true) {
       cancelled = true
       stream?.getTracks().forEach((t) => t.stop())
     }
-  }, [facing, enabled, attempt])
+  }, [facing, enabled, size, attempt])
 
   /** Reintenta reproducir el video. Llamarlo desde un toque del usuario. */
   const resume = async () => {

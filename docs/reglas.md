@@ -20,7 +20,7 @@ de inicio: en el menú del navegador, «Agregar a pantalla de inicio».
 |---|---|---|
 | 📷 Foto | Tomas la foto que pide el reto | Cuando un organizador la aprueba |
 | 🐱 AR con Watt | Te tomas una foto con Watt | Cuando un organizador la aprueba |
-| 📍 Checkpoint QR | Escaneas un QR que está en el lugar | Al instante |
+| 📍 Checkpoint QR | Escaneas un QR que está en el lugar (botón central **Capturar**) | Al instante |
 | 📝 Encuesta | Respondes sobre una charla | Al instante |
 
 - Algunos retos están **bloqueados** hasta completar otro, y algunos son

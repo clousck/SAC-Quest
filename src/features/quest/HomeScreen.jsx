@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useQuest } from './QuestContext'
-import { ChallengeIcon, LevelBar, StateBadge, TYPE_EMOJI } from './ui'
+import { ChallengeCard, LevelBar } from './ui'
 
 const GROUPS = [
   { title: 'Disponibles', states: ['available', 'rejected'] },
@@ -54,20 +54,7 @@ export default function HomeScreen() {
             <ul className="challenge-list">
               {items.map((c) => (
                 <li key={c.id}>
-                  <Link to={`/e/${slug}/r/${c.id}`} className={`challenge-card s-${c.state}`}>
-                    <ChallengeIcon challenge={c} />
-                    <div className="ch-body">
-                      <h3>{c.title}</h3>
-                      <p className="ch-meta">
-                        {TYPE_EMOJI[c.type]} {[c.category, c.tierName, c.secret && '🤫 secreto'].filter(Boolean).join(' · ')}
-                      </p>
-                      {c.state === 'locked' && c.lockedHint && <p className="ch-hint">🔒 {c.lockedHint}</p>}
-                    </div>
-                    <div className="ch-side">
-                      <span className="points">+{c.points}</span>
-                      {c.state !== 'available' && <StateBadge state={c.state} />}
-                    </div>
-                  </Link>
+                  <ChallengeCard slug={slug} challenge={c} />
                 </li>
               ))}
             </ul>

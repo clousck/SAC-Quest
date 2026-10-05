@@ -1,4 +1,4 @@
-import { useNavigate } from 'react-router'
+import { Link, useNavigate } from 'react-router'
 import { mediaUrl } from '../../api/client'
 
 export const TYPE_LABEL = { PHOTO: '📷 Foto', AR: '🐱 AR con Watt', QR: '📍 Checkpoint QR', TRIVIA: '📝 Encuesta' }
@@ -54,6 +54,26 @@ export function ChallengeIcon({ challenge, large = false }) {
     <span className={cls} aria-hidden="true">
       {challenge.icon || TYPE_EMOJI[challenge.type] || '⭐'}
     </span>
+  )
+}
+
+/** Fila de un reto en una lista; lleva a su detalle. */
+export function ChallengeCard({ slug, challenge: c }) {
+  return (
+    <Link to={`/e/${slug}/r/${c.id}`} className={`challenge-card s-${c.state}`}>
+      <ChallengeIcon challenge={c} />
+      <div className="ch-body">
+        <h3>{c.title}</h3>
+        <p className="ch-meta">
+          {TYPE_EMOJI[c.type]} {[c.category, c.tierName, c.secret && '🤫 secreto'].filter(Boolean).join(' · ')}
+        </p>
+        {c.state === 'locked' && c.lockedHint && <p className="ch-hint">🔒 {c.lockedHint}</p>}
+      </div>
+      <div className="ch-side">
+        <span className="points">+{c.points}</span>
+        {c.state !== 'available' && <StateBadge state={c.state} />}
+      </div>
+    </Link>
   )
 }
 
