@@ -195,6 +195,19 @@ export function participantStats(db, participantId) {
 
 // --- desbloqueo y disponibilidad de retos ---
 
+/**
+ * La regla que de verdad se exige. `active` son los ids de los retos activos:
+ * un requisito borrado o desactivado no lo puede cumplir nadie, asi que no
+ * cuenta (dejaba el reto bloqueado para siempre). Sin nada que exigir → null.
+ */
+export function effectiveRule(rule, active) {
+  if (!rule) return null
+  const after = (rule.afterChallenges ?? []).filter((id) => !active || active.has(id))
+  const minXp = rule.minXp > 0 ? rule.minXp : 0
+  if (!after.length && !minXp) return null
+  return { ...(after.length && { afterChallenges: after }), ...(minXp && { minXp }) }
+}
+
 /** unlockRule: { afterChallenges?: number[], minXp?: number } — se exigen todas. */
 export function ruleSatisfied(rule, stats) {
   if (!rule) return true
@@ -231,16 +244,17 @@ export function usedSlots(db, eventId) {
  * state: approved | pending | available | rejected | locked | upcoming |
  *        expired | full | closed
  */
-export function challengeState(ch, { stats, used, event, titles, now = new Date().toISOString() }) {
+export function challengeState(ch, { stats, used, event, titles, active, now = new Date().toISOString() }) {
   const sub = stats.latest.get(ch.id)
-  const unlocked = ruleSatisfied(ch.unlockRule, stats)
-  if (ch.visibility === 'secret' && !sub && !(ch.unlockRule && unlocked)) return null
+  const rule = effectiveRule(ch.unlockRule, active)
+  const unlocked = ruleSatisfied(rule, stats)
+  if (ch.visibility === 'secret' && !sub && !(rule && unlocked)) return null
 
   const base = { submissionId: sub?.id ?? null, rejectReason: null, lockedHint: null }
   if (sub?.status === 'approved') return { ...base, state: 'approved', points: sub.points_awarded }
   if (sub?.status === 'pending') return { ...base, state: 'pending' }
   if (event.status === 'closed') return { ...base, state: 'closed' }
-  if (!unlocked) return { ...base, state: 'locked', lockedHint: unlockHint(ch.unlockRule, titles) }
+  if (!unlocked) return { ...base, state: 'locked', lockedHint: unlockHint(rule, titles) }
   if (ch.availableFrom && now < ch.availableFrom) return { ...base, state: 'upcoming' }
   if (ch.availableUntil && now > ch.availableUntil) return { ...base, state: 'expired' }
   if (ch.maxCompletions && (used.get(ch.id) ?? 0) >= ch.maxCompletions) return { ...base, state: 'full' }

@@ -105,6 +105,12 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - Estado que debe sobrevivir a `refresh()` (p. ej. el festejo tras enviar) va en el componente
   padre: al refrescar, el reto cambia de estado y el flujo hijo se desmonta.
 - Los QR del panel usan `appUrl` (de `APP_DOMAIN`, vía `/api/admin/me`), no `window.location`.
+- Reglas de desbloqueo: los ids de `unlock_rule.afterChallenges` no tienen clave foránea. Un
+  requisito borrado o desactivado **no se exige** (`effectiveRule` en `rules.js`); en producción un
+  reto borrado dejó a otro bloqueado para todos con «Completa otros retos» y el panel no lo mostraba.
+- Datos de producción: `docker compose exec -T app npm run diagnose -- <slug> ["<alias>"]` (solo
+  lee; retos y reglas, envíos, retos de Rama con el conteo por Rama y cómo ve los retos una persona).
+  Los retos de Rama se calculan al vuelo: uno recién creado ya cuenta lo aprobado antes.
 - SQLite no deja borrar una columna con CHECK (p. ej. `difficulty`): si deja de usarse, se ignora.
 - En el PC del usuario (Windows): hay Python 3.12 y Edge; no hay Docker, `flock` ni `pkill`. Las
   pantallas se pueden revisar con Edge headless por CDP (servidor con datos de `seed-demo`; Node 24
@@ -121,7 +127,7 @@ archivo solo guarda lo que no se deduce leyendo el código.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 27 pruebas (API completa + config)
+    cd server && npm test             # 28 pruebas (API completa + config)
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
 

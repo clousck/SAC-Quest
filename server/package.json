@@ -12,6 +12,7 @@
     "test": "node --disable-warning=ExperimentalWarning --test \"test/**/*.test.js\"",
     "create-admin": "node --disable-warning=ExperimentalWarning scripts/create-admin.js",
     "seed-demo": "node --disable-warning=ExperimentalWarning scripts/seed-demo.js",
+    "diagnose": "node --disable-warning=ExperimentalWarning scripts/diagnose.js",
     "backup": "node --disable-warning=ExperimentalWarning scripts/backup.js",
     "loadtest": "node scripts/loadtest.js"
   },

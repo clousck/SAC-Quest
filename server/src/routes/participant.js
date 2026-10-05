@@ -150,7 +150,13 @@ export function participantRoutes(svc) {
     const titles = new Map(challenges.filter((c) => c.visibility === 'visible').map((c) => [c.id, c.title]))
     return {
       challenges,
-      ctx: { stats: participantStats(db, row.id), used: usedSlots(db, ev.id), event: ev, titles },
+      ctx: {
+        stats: participantStats(db, row.id),
+        used: usedSlots(db, ev.id),
+        event: ev,
+        titles,
+        active: new Set(challenges.map((c) => c.id)),
+      },
     }
   }
 

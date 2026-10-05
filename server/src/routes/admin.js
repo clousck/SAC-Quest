@@ -506,6 +506,13 @@ export function adminRoutes(svc) {
     return Object.keys(rule).length ? rule : null
   }
 
+  /** Deja en la regla solo retos que existen en el evento (y no el propio). */
+  function ownUnlockRule(rule, eventId, selfId) {
+    if (!rule?.afterChallenges) return rule
+    const ids = new Set(db.all('SELECT id FROM challenges WHERE event_id = :eventId', { eventId }).map((r) => r.id))
+    return normalizeUnlockRule({ ...rule, afterChallenges: rule.afterChallenges.filter((id) => ids.has(id) && id !== selfId) })
+  }
+
   const challengeFields = {
     type: (v) => oneOf(v, 'tipo', CHALLENGE_TYPES),
     title: (v) => str(v, 'título', { min: 2, max: 80 }),
@@ -617,6 +624,7 @@ export function adminRoutes(svc) {
     applyTypeRules(data, data.type)
     applyTier(data, ev)
     applySurvey(data, body, data.type, null)
+    if (data.unlockRule) data.unlockRule = ownUnlockRule(data.unlockRule, ev.id, null)
     const t = now()
     const id = Number(
       db.run(
@@ -647,6 +655,7 @@ export function adminRoutes(svc) {
     applyTypeRules(data, type)
     applyTier(data, getEvent(ch.eventId))
     applySurvey(data, body, type, ch)
+    if (data.unlockRule) data.unlockRule = ownUnlockRule(data.unlockRule, ch.eventId, ch.id)
     if (hasQr(type) && !ch.qrCode) data.qrCode = uniqueCode('challenges', 'qr_code', 6)
     data.updatedAt = now()
     update('challenges', ch.id, data, challengeColumns)
@@ -723,7 +732,20 @@ export function adminRoutes(svc) {
         WHERE s.challenge_id = :id`,
       { id: ch.id },
     )
-    db.run('DELETE FROM challenges WHERE id = :id', { id: ch.id })
+    db.tx(() => {
+      db.run('DELETE FROM challenges WHERE id = :id', { id: ch.id })
+      // Ningun otro reto debe seguir pidiendo el que se borro.
+      for (const row of db.all('SELECT id, unlock_rule FROM challenges WHERE event_id = :eventId AND unlock_rule IS NOT NULL', {
+        eventId: ch.eventId,
+      })) {
+        const rule = parseJson(row.unlock_rule, null)
+        if (!rule?.afterChallenges?.includes(ch.id)) continue
+        db.run('UPDATE challenges SET unlock_rule = :rule WHERE id = :id', {
+          rule: json(ownUnlockRule(rule, ch.eventId, row.id)),
+          id: row.id,
+        })
+      }
+    })
     await storage.remove(ch.imageKey, ...files.flatMap((f) => [f.key, f.thumb_key]))
     return c.json({ ok: true })
   })

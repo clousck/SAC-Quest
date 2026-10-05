@@ -307,4 +307,5 @@ los QR**.
 | `405` al iniciar sesión | El dominio todavía apunta a Cloudflare Pages: paso 5.1. |
 | `EACCES` en `/data` o `/backups` | La carpeta del host no es del uid 1000: `sudo chown -R 1000:1000 <carpeta>`. |
 | La cámara no abre en el teléfono | Se está usando `http://` (IP local): usar `https://sacquest.penginexr.com`. |
+| Un reto sale bloqueado sin motivo, o un reto de Rama no se marca | `docker compose exec -T app npm run diagnose -- <evento> "<nombre>"`: muestra las reglas de desbloqueo, los envíos y el conteo de cada Rama (solo lee). |
 | Los QR muestran `localhost` o la IP | Falta `APP_DOMAIN` en `server/.env` (el panel lo avisa en Ajustes). |

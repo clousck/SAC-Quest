@@ -554,6 +554,30 @@ describe('flujo completo', () => {
     assert.deepEqual((await call('GET', `${slug}/challenges`, { token: ana })).data.announcements, [])
   })
 
+  test('un requisito borrado o desactivado no deja el reto bloqueado', async () => {
+    const slug = '/events/sac-quest-2027'
+    const mk = async (body) => (await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body: { status: 'active', type: 'QR', ...body } })).data.challenge
+    const stateOf = async (id) => (await call('GET', `${slug}/challenges`, { token: beto })).data.challenges.find((c) => c.id === id)?.state
+    const first = await mk({ title: 'Primero' })
+    const other = await mk({ title: 'Otro requisito' })
+    const next = await mk({ title: 'Despues', unlockRule: { afterChallenges: [first.id, other.id, 99999] } })
+    assert.deepEqual(next.unlockRule, { afterChallenges: [first.id, other.id] }, 'no se guardan retos que no existen')
+    assert.equal(await stateOf(next.id), 'locked')
+
+    await call('DELETE', `/admin/challenges/${first.id}`, { token: admin })
+    const kept = (await call('GET', `/admin/challenges/${next.id}`, { token: admin })).data.challenge
+    assert.deepEqual(kept.unlockRule, { afterChallenges: [other.id] }, 'el reto borrado sale de la regla')
+    assert.equal(await stateOf(next.id), 'locked', 'el otro requisito sigue contando')
+
+    await call('PATCH', `/admin/challenges/${other.id}`, { token: admin, body: { status: 'inactive' } })
+    assert.equal(await stateOf(next.id), 'available', 'un requisito desactivado no se exige')
+
+    // Reglas que quedaron rotas antes de este arreglo: se ignoran al calcular.
+    db.run('UPDATE challenges SET unlock_rule = :rule WHERE id = :id', { rule: '{"afterChallenges":[99999]}', id: next.id })
+    assert.equal(await stateOf(next.id), 'available')
+    for (const c of [other, next]) await call('DELETE', `/admin/challenges/${c.id}`, { token: admin })
+  })
+
   test('cerrar el evento bloquea nuevos envíos', async () => {
     await call('PATCH', `/admin/events/${eventId}`, { token: admin, body: { status: 'closed' } })
     const res = await call('POST', `/events/sac-quest-2027/qr/${qrCh.qrCode}`, { token: beto })
