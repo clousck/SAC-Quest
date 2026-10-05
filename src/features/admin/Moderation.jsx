@@ -140,7 +140,6 @@ export default function Moderation() {
 function ReviewCard({ item, onDecide, onDelete, queued }) {
   const [rejecting, setRejecting] = useState(false)
   const [reason, setReason] = useState('')
-  const [points, setPoints] = useState(String(item.challenge.points))
   const [busy, setBusy] = useState(false)
 
   const act = async (decision, extra) => {
@@ -148,7 +147,7 @@ function ReviewCard({ item, onDecide, onDelete, queued }) {
     await onDecide(item, decision, extra)
     setBusy(false)
   }
-  const approve = () => act('approve', { points: Number(points) })
+  const approve = () => act('approve')
   const reject = (r = reason) => act('reject', { reason: r || null })
 
   useEffect(() => {
@@ -188,10 +187,7 @@ function ReviewCard({ item, onDecide, onDelete, queued }) {
 
         {!rejecting ? (
           <>
-            <label className="inline-label">
-              Puntos
-              <input type="number" min="0" value={points} onChange={(e) => setPoints(e.target.value)} />
-            </label>
+            <p className="points">+{item.challenge.points} XP</p>
             <button className="btn primary block big" onClick={approve} disabled={busy}>
               ✓ Aprobar <kbd>A</kbd>
             </button>

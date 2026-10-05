@@ -1045,9 +1045,8 @@ export function adminRoutes(svc) {
     const body = await jsonBody(c)
     const decision = oneOf(body.decision, 'decisión', ['approve', 'reject'])
     const approve = decision === 'approve'
-    const points = approve
-      ? (int(body.points, 'puntos', { min: 0, max: 10000, required: false }) ?? s.challenge_points)
-      : 0
+    // Los puntos son siempre los del reto: al moderar no se cambian.
+    const points = approve ? s.challenge_points : 0
     db.run(
       `UPDATE submissions
           SET status = :status, points_awarded = :points, reject_reason = :reason,

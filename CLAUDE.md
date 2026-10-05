@@ -37,8 +37,9 @@ archivo solo guarda lo que no se deduce leyendo el código.
   `git deploy --signal-only` (no hace push). Si el token no está, pedírselo al usuario.
 - Fotos **no públicas**: solo participantes del evento y organizadores.
 - El usuario escribe en español y prefiere: revisar diseño antes de cambios grandes, no
-  reescribir, explicaciones claras y cortas. Commits en `main` (historial en español); pide el
-  commit y el push explícitamente. Valora automatizar: que algo sea trabajo extra para la IA no es
+  reescribir, explicaciones claras y cortas. Commits en `main` (historial en español). Si pide
+  planear o una propuesta, no subir nada; si pide hacer algo directamente, subir y desplegar sin
+  preguntar, salvo dudas o algo pendiente de su parte. Valora automatizar: que algo sea trabajo extra para la IA no es
   motivo para no hacerlo; que complique el uso en el evento, sí.
 
 ## Arquitectura (decisiones y por qué)
@@ -91,6 +92,10 @@ archivo solo guarda lo que no se deduce leyendo el código.
   dentro de la app + lista de retos de foto disponibles. `qrScan.js` usa `BarcodeDetector` si existe
   y, si no (iPhone), **jsQR** en un chunk aparte. Un QR leído solo navega a `/e/:slug/q/:código`
   (`QrClaim` hace el resto). Los QR impresos siguen sirviendo con la cámara del teléfono.
+- El visor del escáner es `QrScanner.jsx` (lo usan «Capturar» y el botón QR junto al campo del
+  código en `EnterCode`, que lee el QR del evento y entra directo).
+- Al moderar **no se cambian los puntos**: aprobar da siempre los del reto (el servidor ignora
+  `points` en `/submissions/:id/review`). Lo pidió el usuario.
 - `/` y las rutas desconocidas abren `EnterCode` (igual que `/entrar`); el booth sin evento quedó en
   `/watt`.
 

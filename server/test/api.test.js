@@ -192,7 +192,8 @@ describe('flujo completo', () => {
     const sub = queue.data.items[0]
     assert.equal(sub.participant.alias, 'Ana')
 
-    const approved = await call('POST', `/admin/submissions/${sub.id}/review`, { token: mod, body: { decision: 'approve' } })
+    // Los puntos que mande el panel se ignoran: valen los del reto.
+    const approved = await call('POST', `/admin/submissions/${sub.id}/review`, { token: mod, body: { decision: 'approve', points: 999 } })
     assert.equal(approved.data.submission.status, 'approved')
     assert.equal(approved.data.submission.reviewer, 'Mod')
     assert.equal(approved.data.pending, 0)

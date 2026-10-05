@@ -4,6 +4,16 @@ import { join, recover } from '../../api/quest'
 import { ErrorBox } from './ui'
 
 /**
+ * Codigo de recuperacion mientras se escribe: XXXX-XXXX, con el guion puesto
+ * solo. Al borrar no se repone el guion final (no se podria borrar mas alla).
+ */
+function formatRecoveryInput(value, prev) {
+  const raw = value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 8)
+  if (raw.length > 4) return `${raw.slice(0, 4)}-${raw.slice(4)}`
+  return raw.length === 4 && value.length > prev.length ? `${raw}-` : raw
+}
+
+/**
  * Una sola pantalla para entrar: nombre + Rama + aceptar. El codigo del
  * evento viene en el QR (?c=...); solo se pide si se entro sin el.
  */
@@ -65,10 +75,11 @@ export default function JoinScreen({ event, teams, notice, onJoined }) {
             Código de recuperación
             <input
               value={recoveryCode}
-              onChange={(e) => setRecoveryCode(e.target.value)}
+              onChange={(e) => setRecoveryCode((prev) => formatRecoveryInput(e.target.value, prev))}
               autoCapitalize="characters"
               autoComplete="off"
               placeholder="XXXX-XXXX"
+              maxLength={9}
               required
             />
           </label>

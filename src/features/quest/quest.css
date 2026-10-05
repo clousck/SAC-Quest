@@ -111,6 +111,11 @@
   padding: 0.75rem 0.85rem;
   min-height: 48px;
 }
+/* Campo con un boton a su derecha (escanear el QR del evento). */
+.field-row { display: flex; gap: 0.5rem; }
+.field-row input { flex: 1; min-width: 0; }
+.scan-btn { flex: none; width: 48px; padding: 0; color: var(--text); }
+.scan-btn.on { background: var(--accent); border-color: var(--accent); color: #111; }
 .form input:focus, .form select:focus { outline: 2px solid var(--accent); outline-offset: 1px; }
 .form label.check { flex-direction: row; align-items: flex-start; gap: 0.6rem; font-size: 0.85rem; }
 .form label.check input { min-height: auto; width: 22px; height: 22px; margin: 0; flex: none; accent-color: var(--accent); }
