@@ -7,15 +7,17 @@
  *  1. Foto completa del sensor con ImageCapture.takePhoto() (Chrome/Android):
  *     misma calidad que la app de camara.
  *  2. El cuadro actual del video (iPhone y cualquier caso en que 1 falle).
+ * `sensor: false` salta el paso 1: en un reto la foto se reduce antes de
+ * subirla, asi que la resolucion del sensor se perderia igual.
  * Watt se renderiza a la resolucion final, no se estira.
  */
-export async function composePhoto({ video, mirror, stage, viewW, viewH, rotation = 0 }) {
+export async function composePhoto({ video, mirror, stage, viewW, viewH, rotation = 0, sensor = true }) {
   const hasVideo = video && video.videoWidth > 0
   let bg = null // { image, x, y, w, h } region de `image` que corresponde a la pantalla
 
   if (hasVideo) {
     const vis = visibleRegion(video.videoWidth, video.videoHeight, viewW, viewH)
-    const still = await takeSensorPhoto(video).catch((e) => {
+    const still = !sensor ? null : await takeSensorPhoto(video).catch((e) => {
       console.warn('[foto] takePhoto no disponible, uso el video:', e?.message ?? e)
       return null
     })

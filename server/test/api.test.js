@@ -294,12 +294,13 @@ describe('flujo completo', () => {
 
   test('score de Rama: desempeño, participación y retos colectivos', async () => {
     const ranking = async () => (await call('GET', `/admin/events/${eventId}/ranking`, { token: mod })).data.teams
-    // XP posible: 20 + 15 + 10 + 40 + 5 + 5 = 95 → tope ponderado 95 × 2.4 = 228.
-    // Rama A: solo Ana (85 XP) → 150 × 85/228 = 56; 1 activa → 75 × ln 2 / ln 11 = 22.
+    // Todo en XP. XP posible por persona: 20 + 15 + 10 + 40 + 5 + 5 = 95 → desempeño máximo
+    // 95 × 2.4 = 228; participación y colectivo valen hasta la mitad de eso (114) cada uno.
+    // Rama A: solo Ana (85 XP) → desempeño 85; 1 activa → 114 × ln 2 / ln 11 = 33.
     let [a, b] = await ranking()
     assert.deepEqual(
       { name: a.name, members: a.members, active: a.active, performance: a.performance, participation: a.participation, collective: a.collective, score: a.score },
-      { name: 'Rama A', members: 1, active: 1, performance: 56, participation: 22, collective: 0, score: 78 },
+      { name: 'Rama A', members: 1, active: 1, performance: 85, participation: 33, collective: 0, score: 118 },
     )
     // Beto esta inscrito pero sin retos aprobados: no suma nada.
     assert.deepEqual({ members: b.members, active: b.active, score: b.score }, { members: 1, active: 0, score: 0 })
@@ -314,8 +315,8 @@ describe('flujo completo', () => {
     assert.equal(created.status, 201)
     const goalId = created.data.goals[0].id
     ;[a, b] = await ranking()
-    assert.equal(a.collective, 75, 'el único reto de Rama cumplido vale todo el componente')
-    assert.equal(a.score, 153)
+    assert.equal(a.collective, 114, 'el único reto de Rama cumplido vale todo el componente')
+    assert.equal(a.score, 232)
     assert.deepEqual(a.goals.map((g) => [g.count, g.met]), [[1, true]])
     assert.equal(b.collective, 0)
 
@@ -327,7 +328,7 @@ describe('flujo completo', () => {
 
     // El ranking del participante trae lo mismo, y el XP individual no cambio.
     const mine = await call('GET', '/events/sac-quest-2027/ranking', { token: beto })
-    assert.equal(mine.data.teams[0].score, 78)
+    assert.equal(mine.data.teams[0].score, 118)
     assert.equal(mine.data.participants[0].xp, 85)
 
     // Los valores se ajustan por evento; guardar otros ajustes no los pisa.
@@ -338,8 +339,9 @@ describe('flujo completo', () => {
     const kept = await call('PATCH', `/admin/events/${eventId}`, { token: admin, body: { settings } })
     assert.deepEqual(kept.data.event.settings.teamScore, teamScore)
     ;[a] = await ranking()
-    // 100 × 85 / (95 × 1.5) = 60; 50 × ln 2 / ln 6 = 19.
-    assert.deepEqual([a.performance, a.participation], [60, 19])
+    // Desempeño: sigue siendo el XP ponderado (85). Participación: máximo 95 × 1.5 / 2 = 71.25,
+    // × ln 2 / ln 6 = 28.
+    assert.deepEqual([a.performance, a.participation], [85, 28])
   })
 
   test('recuperar la cuenta en otro teléfono', async () => {
@@ -501,6 +503,55 @@ describe('flujo completo', () => {
       results.data.responses.map((r) => [r.alias, r.correct, r.pointsAwarded, r.answers.q4]),
       [['Ana', 2, 30, 'Robótica'], ['Beto', 1, 0, undefined]],
     )
+  })
+
+  test('valor del reto: define los puntos y los ya otorgados lo siguen', async () => {
+    const slug = '/events/sac-quest-2027'
+    const xp = async () => (await call('GET', `${slug}/me`, { token: ana })).data.me.xp
+    const before = await xp()
+
+    const event = (await call('GET', `/admin/events/${eventId}`, { token: admin })).data.event
+    assert.deepEqual(event.settings.pointTiers.map((t) => [t.id, t.points]), [['rapido', 10], ['normal', 20], ['dificil', 40], ['especial', 80]])
+
+    // El checkpoint de Ana valía 10: con el valor «Difícil» pasa a 40, también para quien ya lo tenía.
+    const bad = await call('PATCH', `/admin/challenges/${qrCh.id}`, { token: admin, body: { tier: 'no-existe' } })
+    assert.equal(bad.status, 400)
+    const set = await call('PATCH', `/admin/challenges/${qrCh.id}`, { token: admin, body: { tier: 'dificil', points: 1 } })
+    assert.deepEqual([set.data.challenge.tier, set.data.challenge.points], ['dificil', 40], 'manda el valor, no los puntos sueltos')
+    assert.equal(await xp(), before + 30)
+    const listed = (await call('GET', `${slug}/challenges`, { token: ana })).data.challenges.find((c) => c.id === qrCh.id)
+    assert.deepEqual([listed.points, listed.tierName], [40, 'Difícil'])
+
+    // Cambiar lo que vale «Difícil» mueve el reto y los puntos ya dados.
+    const settings = { teamLabel: 'Rama', accent: '#ffd23f', likes: true }
+    const tiers = event.settings.pointTiers.map((t) => (t.id === 'dificil' ? { ...t, points: 50 } : t))
+    await call('PATCH', `/admin/events/${eventId}`, { token: admin, body: { settings: { ...settings, pointTiers: tiers } } })
+    assert.equal(await xp(), before + 40)
+
+    // Una encuesta fallada sigue en 0 aunque cambie el valor del reto.
+    const survey = (await call('GET', `/admin/events/${eventId}/challenges`, { token: admin })).data.challenges.find((c) => c.type === 'TRIVIA')
+    await call('PATCH', `/admin/challenges/${survey.id}`, { token: admin, body: { points: 35 } })
+    assert.equal(await xp(), before + 45, 'Ana la aprobó: 30 → 35')
+    assert.equal((await call('GET', `${slug}/me`, { token: beto })).data.me.xp, 0, 'Beto no llegó al mínimo')
+
+    // Sin valor («Sin XP»): los puntos se ponen a mano.
+    const free = await call('PATCH', `/admin/challenges/${qrCh.id}`, { token: admin, body: { tier: null, points: 10 } })
+    assert.deepEqual([free.data.challenge.tier, free.data.challenge.points], [null, 10])
+    assert.equal(await xp(), before + 5)
+  })
+
+  test('avisos: llegan a los participantes con el sondeo de retos', async () => {
+    const slug = '/events/sac-quest-2027'
+    const none = await call('GET', `${slug}/challenges`, { token: ana })
+    assert.deepEqual(none.data.announcements, [])
+    assert.equal((await call('POST', `/admin/events/${eventId}/announcements`, { token: mod, body: { text: '' } })).status, 400)
+    const sent = await call('POST', `/admin/events/${eventId}/announcements`, { token: mod, body: { text: '  La charla 2 empieza en 5 minutos  ' } })
+    assert.equal(sent.status, 201)
+    assert.equal(sent.data.announcements[0].author, 'Mod')
+    const got = await call('GET', `${slug}/challenges`, { token: ana })
+    assert.deepEqual(got.data.announcements.map((n) => n.text), ['La charla 2 empieza en 5 minutos'])
+    await call('DELETE', `/admin/announcements/${sent.data.announcements[0].id}`, { token: mod })
+    assert.deepEqual((await call('GET', `${slug}/challenges`, { token: ana })).data.announcements, [])
   })
 
   test('cerrar el evento bloquea nuevos envíos', async () => {

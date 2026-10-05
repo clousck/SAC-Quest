@@ -1,6 +1,6 @@
 import { Link } from 'react-router'
 import { useQuest } from './QuestContext'
-import { ChallengeIcon, DIFFICULTY_LABEL, LevelBar, StateBadge, TYPE_EMOJI } from './ui'
+import { ChallengeIcon, LevelBar, StateBadge, TYPE_EMOJI } from './ui'
 
 const GROUPS = [
   { title: 'Disponibles', states: ['available', 'rejected'] },
@@ -59,9 +59,7 @@ export default function HomeScreen() {
                     <div className="ch-body">
                       <h3>{c.title}</h3>
                       <p className="ch-meta">
-                        {TYPE_EMOJI[c.type]} {c.category && `${c.category} · `}
-                        {DIFFICULTY_LABEL[c.difficulty]}
-                        {c.secret && ' · 🤫 secreto'}
+                        {TYPE_EMOJI[c.type]} {[c.category, c.tierName, c.secret && '🤫 secreto'].filter(Boolean).join(' · ')}
                       </p>
                       {c.state === 'locked' && c.lockedHint && <p className="ch-hint">🔒 {c.lockedHint}</p>}
                     </div>

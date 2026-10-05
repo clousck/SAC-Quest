@@ -14,14 +14,14 @@ Teléfonos ──HTTPS──▶ Cloudflare ──túnel──▶ contenedor clou
 | Archivo | Qué hace |
 |---|---|
 | `Dockerfile` | Compila la página, instala la API y arma una imagen con Node 22 que corre como usuario `node` (uid 1000). |
-| `docker-compose.yml` | Servicio `app` y el túnel `cloudflared` (perfil `tunnel`). Extras para pruebas: perfil `quick` y `RNR_BIND`. |
+| `docker-compose.yml` | Servicio `app` y el túnel `cloudflared` (perfil `tunnel`). `SAC_BIND` abre el puerto a la red local. |
 | `server/.env` | Configuración del servidor: `APP_DOMAIN`, `APP_SECRET`, `TUNNEL_TOKEN`. |
-| `.env` (raíz, opcional) | Opciones de Docker: `RNR_DATA_DIR`, `RNR_BACKUP_DIR`, `COMPOSE_PROFILES`, `RNR_BIND`. |
+| `.env` (raíz, opcional) | Opciones de Docker: `SAC_DATA_DIR`, `SAC_BACKUP_DIR`, `COMPOSE_PROFILES`, `SAC_BIND`. |
 
 ## 0. Qué se necesita
 
 - Raspberry Pi 5 con **Raspberry Pi OS Lite 64 bits**. Con Raspberry Pi Imager,
-  en *Editar ajustes*: nombre de host (p. ej. `rnr-quest`), usuario y contraseña,
+  en *Editar ajustes*: nombre de host (p. ej. `sac-quest`), usuario y contraseña,
   wifi si no va por cable, y **activar SSH**.
 - Mejor por **cable de red** que por wifi.
 - El dominio `penginexr.com` en una cuenta de **Cloudflare** (plan gratuito).
@@ -35,10 +35,10 @@ Teléfonos ──HTTPS──▶ Cloudflare ──túnel──▶ contenedor clou
 Desde la computadora (PowerShell en Windows):
 
 ```bash
-ssh <usuario>@rnr-quest.local          # o ssh <usuario>@<ip-de-la-pi>
+ssh <usuario>@sac-quest.local          # o ssh <usuario>@<ip-de-la-pi>
 ```
 
-Si `rnr-quest.local` no responde, busca la IP de la Pi en el router. Una vez
+Si `sac-quest.local` no responde, busca la IP de la Pi en el router. Una vez
 dentro, `hostname -I` muestra la IP (la primera, p. ej. `192.168.1.50`); anótala.
 
 Todos los comandos que siguen se escriben **en la Pi** (en esa sesión SSH).
@@ -75,18 +75,18 @@ lsblk -f                               # el SSD aparece como sda (sda1 si tiene 
 que tenga):
 
 ```bash
-sudo mkfs.ext4 -L rnr-ssd /dev/sda1    # revisar bien que sea el SSD
+sudo mkfs.ext4 -L sac-ssd /dev/sda1    # revisar bien que sea el SSD
 ```
 
 Montarlo siempre en `/mnt/ssd`:
 
 ```bash
 sudo mkdir -p /mnt/ssd
-echo 'LABEL=rnr-ssd /mnt/ssd ext4 defaults,noatime,nofail 0 2' | sudo tee -a /etc/fstab
+echo 'LABEL=sac-ssd /mnt/ssd ext4 defaults,noatime,nofail 0 2' | sudo tee -a /etc/fstab
 sudo systemctl daemon-reload && sudo mount -a
 df -h /mnt/ssd                         # debe mostrar el tamaño del SSD
-sudo mkdir -p /mnt/ssd/rnr-quest /mnt/ssd/rnr-backups
-sudo chown 1000:1000 /mnt/ssd/rnr-quest /mnt/ssd/rnr-backups
+sudo mkdir -p /mnt/ssd/sac-quest /mnt/ssd/sac-backups
+sudo chown 1000:1000 /mnt/ssd/sac-quest /mnt/ssd/sac-backups
 ```
 
 El `chown 1000` es porque el contenedor corre como el usuario `node` (uid 1000),
@@ -95,8 +95,8 @@ no como root. (`nofail`: si el SSD no está conectado, la Pi arranca igual.)
 ## 4. Descargar y configurar SAC Quest
 
 ```bash
-git clone https://github.com/clousck/RNR2026-XR-Experience.git ~/rnr-quest
-cd ~/rnr-quest
+git clone https://github.com/clousck/SAC-Quest.git ~/Git/sac-quest
+cd ~/Git/sac-quest
 cp server/.env.example server/.env
 openssl rand -base64 32                # copia el resultado: es el APP_SECRET
 nano server/.env
@@ -116,8 +116,8 @@ Con el túnel siempre activo y, si hiciste el paso 3, los datos en el SSD:
 ```bash
 cat > .env <<'EOF'
 COMPOSE_PROFILES=tunnel
-RNR_DATA_DIR=/mnt/ssd/rnr-quest
-RNR_BACKUP_DIR=/mnt/ssd/rnr-backups
+SAC_DATA_DIR=/mnt/ssd/sac-quest
+SAC_BACKUP_DIR=/mnt/ssd/sac-backups
 EOF
 ```
 
@@ -141,7 +141,7 @@ tener IP fija: la Pi se conecta hacia Cloudflare.
    quedó. Si no, el túnel no puede usar ese nombre (y Pages seguiría
    respondiendo `405` al iniciar sesión).
 2. Cloudflare → *Zero Trust* → *Networks* → *Tunnels* → *Create a tunnel* →
-   *Cloudflared*, nombre `rnr-quest`.
+   *Cloudflared*, nombre `sac-quest`.
 3. Copiar el **token**: el texto largo después de `--token` en los comandos que
    muestra. No hace falta instalar nada de lo que sugiere esa página.
 4. *Public Hostname* → *Add*: subdominio `sacquest`, dominio `penginexr.com`, tipo
@@ -173,18 +173,13 @@ y ajustes).
 Útil si el túnel no anda y hay que entrar al panel desde la red del lugar:
 
 ```bash
-echo 'RNR_BIND=0.0.0.0' >> .env
+echo 'SAC_BIND=0.0.0.0' >> .env
 docker compose up -d
 ```
 
 Desde la misma red: `http://<ip-de-la-pi>:8787/admin`. Solo para el panel:
 **la cámara no funciona** en los teléfonos sin HTTPS. Para cerrarlo, borrar la
-línea `RNR_BIND` de `.env` y `docker compose up -d`.
-
-(También existe `docker compose --profile quick up -d`: un túnel temporal
-`https://<algo>.trycloudflare.com` sin cuenta, que aparece en
-`docker compose logs cloudflared-quick`. Con `APP_DOMAIN` puesto, los QR siguen
-apuntando a `sacquest.penginexr.com`.)
+línea `SAC_BIND` de `.env` y `docker compose up -d`.
 
 ## 8. Backups automáticos
 
@@ -196,17 +191,17 @@ Agregar al final (cada 15 min: instantánea de la base + copia incremental de
 las fotos; conserva las últimas 48):
 
 ```
-*/15 * * * * cd ~/rnr-quest && docker compose exec -T app npm run backup -- /backups >> /tmp/rnr-backup.log 2>&1
+*/15 * * * * cd ~/Git/sac-quest && docker compose exec -T app npm run backup -- /backups >> /tmp/sac-backup.log 2>&1
 ```
 
 Probarlo a mano una vez: `docker compose exec app npm run backup -- /backups`.
-Los backups quedan en `RNR_BACKUP_DIR` (o `~/rnr-quest/backups`). Lo ideal es
+Los backups quedan en `SAC_BACKUP_DIR` (o `~/Git/sac-quest/backups`). Lo ideal es
 que estén en **otro disco** que los datos.
 
 Restaurar: `docker compose stop app`, copiar una instantánea como `quest.db` y
-la carpeta `files/` en la carpeta de datos (`RNR_DATA_DIR`), `docker compose
+la carpeta `files/` en la carpeta de datos (`SAC_DATA_DIR`), `docker compose
 start app`. Con el volumen por defecto (sin SSD), se entra a los datos así:
-`docker run --rm -it -v rnr-quest_rnr-data:/data -v "$PWD/backups:/backups" busybox sh`.
+`docker run --rm -it -v sac-quest_sac-data:/data -v "$PWD/backups:/backups" busybox sh`.
 
 Después del evento, descarga además el ZIP de fotos (panel → Galería →
 Descargar ZIP) y guárdalo aparte.
@@ -216,7 +211,7 @@ Descargar ZIP) y guárdalo aparte.
 ```bash
 sudo reboot
 # esperar 1-2 minutos, volver a entrar por SSH
-cd ~/rnr-quest && docker compose ps    # todo "Up", app (healthy)
+cd ~/Git/sac-quest && docker compose ps    # todo "Up", app (healthy)
 ```
 
 ## 10. Antes del evento (checklist)
@@ -225,11 +220,11 @@ cd ~/rnr-quest && docker compose ps    # todo "Up", app (healthy)
    computadora con el repo y Node, contra un evento de prueba
    (`docker compose exec app npm run seed-demo` crea uno e imprime el código):
    `cd server && npm run loadtest -- --url https://sacquest.penginexr.com/api --code <código>`
-2. Crear el evento (o **duplicar** el del Taller), cargar Ramas y retos, revisar
-   niveles y logros.
+2. Crear el evento (o **duplicar** uno anterior), cargar Ramas y retos, revisar
+   niveles, logros y retos de Rama. Guía del panel: [organizadores.md](organizadores.md).
 3. Imprimir los QR (Ajustes → Imprimir QRs): el de entrada en carteles, cada
    checkpoint en su lugar. Bajo cada QR va el código en texto.
-4. Probar con un teléfono **con datos móviles**: entrar, foto, QR, AR.
+4. Hacer el **ensayo con 10 personas**: [ensayo.md](ensayo.md).
 5. El día: **pausar las actualizaciones** (`touch .deploy/pause`, sección 11) y **Abrir evento**; moderadores con sesión iniciada (Moderar funciona
    bien desde el teléfono); ranking en la pantalla grande (Ranking → Pantalla grande).
 6. Al terminar: **Cerrar evento** (congela el ranking; la galería sigue visible).
@@ -247,7 +242,7 @@ git deploy  →  push a GitHub  →  señal a http://<ip-tailscale>:8788  →  l
 **En la Pi, una sola vez** (requiere Tailscale conectado):
 
 ```bash
-cd ~/rnr-quest
+cd ~/Git/sac-quest
 git pull
 ./deploy/install-autodeploy.sh
 ```
@@ -271,9 +266,9 @@ señal.
 
 | Para | En la Pi |
 |---|---|
-| **Pausar** las actualizaciones (días de evento) | `touch ~/rnr-quest/.deploy/pause` |
-| Reanudarlas | `rm ~/rnr-quest/.deploy/pause` |
-| Ver la última actualización | `cat ~/rnr-quest/.deploy/status` · detalle: `cat ~/rnr-quest/.deploy/log` |
+| **Pausar** las actualizaciones (días de evento) | `touch ~/Git/sac-quest/.deploy/pause` |
+| Reanudarlas | `rm ~/Git/sac-quest/.deploy/pause` |
+| Ver la última actualización | `cat ~/Git/sac-quest/.deploy/status` · detalle: `cat ~/Git/sac-quest/.deploy/log` |
 | Actualizar a mano | `./deploy/update.sh` |
 | El servicio no responde | `systemctl status sac-quest-deploy` · `journalctl -u sac-quest-deploy -n 30` |
 | Quitarlo | `sudo systemctl disable --now sac-quest-deploy` |
@@ -283,7 +278,7 @@ hasta que la quites y vuelvas a mandar la señal.
 
 ## 12. Comandos útiles
 
-| Para | Comando (en `~/rnr-quest`) |
+| Para | Comando (en `~/Git/sac-quest`) |
 |---|---|
 | Actualizar a la última versión | `git deploy` desde tu computadora (sección 11), o aquí: `git pull && docker compose up -d --build` (la base se migra sola) |
 | Ver logs | `docker compose logs -f app` (o `cloudflared`) |

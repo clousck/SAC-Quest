@@ -14,7 +14,7 @@ RUN npm ci --no-audit --no-fund
 COPY index.html vite.config.js ./
 COPY public ./public
 COPY src ./src
-# La pagina llama a /api del mismo dominio: no hace falta VITE_API_URL
+# La pagina llama a /api del mismo dominio
 RUN npm run build
 
 # ---------- 2. Dependencias del servidor ----------

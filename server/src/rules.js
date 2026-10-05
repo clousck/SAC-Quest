@@ -16,12 +16,16 @@ export const DEFAULT_LEVELS = [
 ]
 
 /**
- * Score de Rama (maximo performance + participation + collective):
- *  - performance: XP de los mejores de la Rama, ponderado con `top`; el
- *    maximo es que esos puestos tengan todo el XP posible de una persona.
- *  - participation: miembros activos, con rendimientos decrecientes; llega
- *    al maximo con `participationRef` activos.
- *  - collective: retos de Rama cumplidos (tabla team_goals).
+ * XP de Rama = desempeño + participacion + retos de Rama, en las mismas
+ * unidades que el XP de las personas:
+ *  - desempeño: XP de los mejores de la Rama, ponderado con `top`. Su maximo
+ *    es que esos puestos tengan todo el XP posible de una persona.
+ *  - participacion: bono por miembros activos, con rendimientos decrecientes;
+ *    llega al maximo con `participationRef` activos.
+ *  - colectivo: retos de Rama cumplidos (tabla team_goals).
+ * performance / participation / collective son pesos relativos: con
+ * 150/75/75, participacion y colectivo pueden valer cada uno la mitad del
+ * desempeño maximo.
  */
 export const DEFAULT_TEAM_SCORE = {
   performance: 150,
@@ -34,11 +38,20 @@ export const DEFAULT_TEAM_SCORE = {
 // Un reto de Rama no pide mas que esto: asi lo puede cumplir una Rama chica.
 export const TEAM_GOAL_MAX_MEMBERS = 5
 
+// Valores de reto: cada reto elige uno y de ahi salen sus puntos.
+export const DEFAULT_POINT_TIERS = [
+  { id: 'rapido', name: 'Rápido', points: 10 },
+  { id: 'normal', name: 'Normal', points: 20 },
+  { id: 'dificil', name: 'Difícil', points: 40 },
+  { id: 'especial', name: 'Especial', points: 80 },
+]
+
 export const DEFAULT_SETTINGS = {
   teamLabel: 'Rama', // como se llama un equipo en este evento
   accent: '#ffd23f',
   likes: true,
   teamScore: DEFAULT_TEAM_SCORE,
+  pointTiers: DEFAULT_POINT_TIERS,
 }
 
 // TRIVIA es la encuesta (ver survey.js)
@@ -94,7 +107,7 @@ export function toChallenge(row) {
     imageKey: row.image_key,
     points: row.points,
     category: row.category,
-    difficulty: row.difficulty,
+    tier: row.tier ?? null,
     status: row.status,
     visibility: row.visibility,
     unlockRule: parseJson(row.unlock_rule, null),
@@ -373,9 +386,12 @@ export function teamRanking(db, event) {
       return { id: g.id, name: g.name, icon: g.icon, description: g.description, members: g.members, count, met: count >= g.members }
     })
     const met = goals.filter((_, i) => teamGoals[i].met).reduce((sum, g) => sum + g.points, 0)
-    const performance = best ? cfg.performance * Math.min(1, weighted / best) : 0
-    const participation = cfg.participation * Math.min(1, Math.log(1 + active) / Math.log(1 + cfg.participationRef))
-    const collective = goalTotal ? (cfg.collective * met) / goalTotal : 0
+    // Todo sale en XP: `unit` convierte los pesos a XP (el desempeño queda
+    // igual al XP ponderado de los mejores).
+    const unit = cfg.performance ? best / cfg.performance : 0
+    const performance = unit * cfg.performance * (best ? Math.min(1, weighted / best) : 0)
+    const participation = unit * cfg.participation * Math.min(1, Math.log(1 + active) / Math.log(1 + cfg.participationRef))
+    const collective = unit * (goalTotal ? (cfg.collective * met) / goalTotal : 0)
     return {
       id: t.id,
       name: t.name,

@@ -81,6 +81,16 @@ function EventRoot() {
   )
 }
 
+/** Avisos de los organizadores: cada uno se muestra una sola vez en este telefono. */
+function announce(slug, list, toast) {
+  const key = `sacquest:avisos:${slug}`
+  const seen = Number(localStorage.getItem(key)) || 0
+  const fresh = list.filter((n) => n.id > seen)
+  if (!fresh.length) return
+  localStorage.setItem(key, String(Math.max(...fresh.map((n) => n.id))))
+  for (const n of fresh.reverse()) toast(`📣 ${n.text}`, { tone: 'accent', ms: 9000 })
+}
+
 /** Avisos al detectar cambios entre dos sondeos. */
 function announceChanges(prev, next, toast) {
   const before = new Map(prev.challenges.map((c) => [c.id, c]))
@@ -119,6 +129,7 @@ function Joined({ slug, token, eventData, signOut }) {
     try {
       const data = await getChallenges(slug, token)
       if (prevRef.current) announceChanges(prevRef.current, data, toast)
+      announce(slug, data.announcements ?? [], toast)
       prevRef.current = data
       setHome(data)
       setHomeError(null)
@@ -190,8 +201,8 @@ function Joined({ slug, token, eventData, signOut }) {
   }
   if (!home) return homeError ? <div className="screen center"><ErrorBox error={homeError} retry={refresh} /></div> : <Spinner />
 
-  // El QR y el detalle de un reto ocupan toda la pantalla, sin barra de pestañas.
-  const tabs = !/\/(q|r)\//.test(location.pathname)
+  // El QR, el detalle de un reto y una encuesta ocupan toda la pantalla, sin barra de pestañas.
+  const tabs = !/\/(q|r|s)\//.test(location.pathname)
 
   return (
     <QuestContext.Provider value={ctx}>

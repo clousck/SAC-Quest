@@ -1,0 +1,28 @@
+# Corre solo en cada push: pruebas de la API y compilacion de la pagina.
+# El resultado se ve en la pestaña "Actions" del repo en GitHub (✓ o ✗ junto
+# a cada commit). No despliega nada: eso lo hace `git deploy`.
+name: Pruebas
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .node-version
+      - name: Pruebas de la API
+        working-directory: server
+        run: |
+          npm ci
+          npm test
+      - name: Compilar la pagina
+        run: |
+          npm ci
+          npx oxlint
+          npm run build

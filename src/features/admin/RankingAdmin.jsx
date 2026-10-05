@@ -8,8 +8,8 @@ import QrImage, { eventJoinUrl } from './QrImage'
 
 const MEDAL = ['🥇', '🥈', '🥉']
 
-const teamSub = (t) => `${t.active} de ${t.members} activos · Desempeño ${t.performance} · Participación ${t.participation} · Colectivo ${t.collective}`
-const teamScore = (t) => `${t.score} pts`
+const teamSub = (t) => `${t.active} de ${t.members} activos · Mejores ${t.performance} · Participación ${t.participation} · Retos ${t.collective}`
+const teamScore = (t) => `${t.score} XP`
 
 function RankList({ rows, name, sub, score = (r) => `${r.xp} XP` }) {
   return (

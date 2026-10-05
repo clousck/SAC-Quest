@@ -7,11 +7,14 @@ teléfono, sin instalar nada:
 
 - **Retos**: 📷 foto, 🐱 AR con Watt (el booth de abajo), 📍 checkpoints QR y
   📝 encuestas sobre las charlas (se abren con su propio QR, un solo intento).
-  Cada reto tiene puntos, categoría, dificultad, horario, cupo, desbloqueo por
-  otros retos o XP, modo secreto y aprobación manual opcional.
-- **Gamificación liviana**: XP, niveles, logros y ranking individual. El ranking
-  por Rama usa un puntaje propio (hasta 300): desempeño de sus 5 mejores,
-  cuántos participan y retos de Rama; los inscritos que no juegan no suman.
+  Cada reto tiene un valor (que define sus puntos), categoría, horario, cupo,
+  desbloqueo por otros retos o XP y modo secreto. Las fotos las aprueba un moderador; los QR y las
+  encuestas se aprueban solos.
+- **Gamificación liviana**: XP, niveles, logros y ranking individual. El XP de
+  una Rama suma el de sus 5 mejores (ponderado), un bono por participación y los
+  retos de Rama; los inscritos que no juegan no suman.
+- **Avisos** de los organizadores a todos los participantes, e icono para la
+  pantalla de inicio del teléfono.
 - **Galería privada** del evento (solo fotos aprobadas, solo participantes),
   con filtros por reto y Rama y likes.
 - **Panel** (`/admin`): crear y editar retos sin tocar código, moderar fotos
@@ -37,7 +40,7 @@ teléfono, sin instalar nada:
 | **Dominio** | `server/.env` → `APP_DOMAIN` | **El único lugar.** Con él se arman los QR y el CORS. El túnel apunta a ese mismo nombre (panel de Cloudflare). |
 | Secreto de firmas | `server/.env` → `APP_SECRET` | `openssl rand -base64 32`. |
 | Túnel de Cloudflare | `server/.env` → `TUNNEL_TOKEN` | Se copia del panel de Cloudflare. |
-| Carpeta de datos, backups | `.env` (raíz) → `RNR_DATA_DIR`, `RNR_BACKUP_DIR` | Opcional. Por defecto, un volumen de Docker y `./backups`. |
+| Carpeta de datos, backups | `.env` (raíz) → `SAC_DATA_DIR`, `SAC_BACKUP_DIR` | Opcional. Por defecto, un volumen de Docker y `./backups`. |
 | Eventos, retos, Ramas, logros | Panel `/admin` | Nada de eso se configura en archivos. |
 
 Plantillas comentadas: [`server/.env.example`](server/.env.example) y [`.env.example`](.env.example).
@@ -49,8 +52,8 @@ La página y la API van en un solo contenedor; el túnel de Cloudflare, en otro.
 No hay que abrir puertos en el router.
 
 ```bash
-git clone https://github.com/clousck/RNR2026-XR-Experience.git ~/rnr-quest
-cd ~/rnr-quest
+git clone https://github.com/clousck/SAC-Quest.git ~/Git/sac-quest
+cd ~/Git/sac-quest
 cp server/.env.example server/.env     # completar APP_SECRET y TUNNEL_TOKEN
 mkdir -p backups
 docker compose --profile tunnel up -d --build
@@ -62,6 +65,15 @@ o con un solo comando desde tu computadora (`git deploy`, por Tailscale; ver la 
 
 Guía paso a paso desde una Pi recién instalada (Docker, SSD, túnel, backups,
 checklist del evento, problemas comunes): **[docs/docker.md](docs/docker.md)**.
+
+### Documentación
+
+| Para quién | Documento |
+|---|---|
+| Organizadores y moderadores (usar el panel) | [docs/organizadores.md](docs/organizadores.md) |
+| Participantes (cómo se juega y se puntúa) | [docs/reglas.md](docs/reglas.md) |
+| Ensayo antes del evento | [docs/ensayo.md](docs/ensayo.md) |
+| Quien instala y mantiene el servidor | [docs/docker.md](docs/docker.md) |
 
 ### En tu computadora (desarrollo)
 
@@ -93,6 +105,10 @@ cd server && npm test                                     # pruebas de la API
 cd server && npm run loadtest -- --code <código> --users 150
 ```
 
+En cada push, GitHub corre solo las pruebas y la compilación
+(`.github/workflows/pruebas.yml`); el resultado se ve en la pestaña **Actions**
+del repo.
+
 ## Arquitectura
 
 ```
@@ -109,7 +125,7 @@ contacto con el backend
   solo a participantes y moderadores con sesión.
 - Participantes sin cuenta: un token por evento en el teléfono y un **código de
   recuperación** en el perfil para seguir desde otro teléfono.
-- XP, niveles, logros y ranking se calculan a partir de las fotos aprobadas:
+- XP, niveles, logros y ranking se calculan a partir de los retos aprobados:
   aprobar, rechazar o borrar corrige todo automáticamente.
 
 ## Estructura
@@ -125,25 +141,27 @@ contacto con el backend
     server/src/
       app.js                      Hono: CORS, errores, /api/media firmadas, estáticos
       db.js                       esquema SQLite y migraciones
-      rules.js                    niveles, logros, desbloqueos, ranking
+      rules.js                    niveles, logros, desbloqueos, ranking, puntaje de Rama
+      survey.js                   encuestas: validar, corregir, resumir
       routes/participant.js       API de participantes
       routes/admin.js             API del panel
       storage.js                  fotos en disco
     server/scripts/               create-admin, seed-demo, backup, loadtest
     Dockerfile, docker-compose.yml   imagen (página + API) y túnel de Cloudflare
     deploy/                       actualización con `git deploy` (señal por Tailscale)
-    docs/docker.md                despliegue en detalle
+    docs/                         guías: servidor, organizadores, reglas, ensayo
 
 ### Rutas
 
 | URL | Qué es |
 |---|---|
 | `/e/:evento?c=CÓDIGO` | QR del evento: entrar y jugar |
-| `/e/:evento/q/:código` | QR impreso de un checkpoint |
+| `/e/:evento/q/:código` | QR impreso de un checkpoint o de una encuesta |
+| `/e/:evento/s/:id` | encuesta |
 | `/entrar` | entrar escribiendo el código del evento |
 | `/e/:evento/watt` | booth libre con Watt |
 | `/admin` | panel |
-| `/` | booth de Watt (como antes: hay QRs viejos que apuntan acá) |
+| `/` | booth de Watt |
 
 # Booth de Watt
 
@@ -178,7 +196,9 @@ soporta, ofrece el botón **"Poner a Watt en el piso (AR)"**:
   interpolan hacia la pose nueva. Cada pose se ajusta para que su punto más bajo
   toque el piso: "Acostado" queda tendido en el suelo (0.34 m alto × 0.8 m largo).
 - **Foto**: JPG con exactamente lo que se ve, sin los botones. Resolución:
-  - *Android (Chrome)*: foto real del sensor con `ImageCapture.takePhoto()`, a la
+  - *Android (Chrome)*, solo en el booth libre (en un reto la foto se reduce a
+    2048 px antes de subirla, así que se usa el cuadro de video): foto real del
+    sensor con `ImageCapture.takePhoto()`, a la
     resolución máxima de la cámara, recortada al encuadre de la pantalla sin
     estirar (en un Pixel 9, ~1820×4080). La foto del sensor es 4:3 y puede venir
     girada, y el video puede estar recortado por estabilización: en vez de
@@ -200,12 +220,13 @@ soporta, ofrece el botón **"Poner a Watt en el piso (AR)"**:
 - **Compartir**: Web Share API → hoja de compartir del sistema → WhatsApp → grupo.
   Ninguna web puede mandar una imagen directo a un grupo; el usuario lo elige.
 
-En un reto AR en iPhone no se ofrece Quick Look: abre fuera de la página y la
-foto nunca vuelve a la app. Se usa el modo cámara, que sí entrega la foto.
+En un reto AR en iPhone, Quick Look abre fuera de la página: la foto se toma
+ahí, queda en la galería y al volver se sube con el botón «Subir la foto del AR
+desde la galería». El modo cámara sigue disponible y entrega la foto directo.
 
 ## Estructura del booth
 
-    src/shared/inAppBrowser.js detecta WeChat/Instagram/etc.
+    src/shared/inAppBrowser.js detecta el navegador interno de Instagram, Facebook y TikTok
     src/features/booth/
       WattBooth.jsx            UI: poses, cuenta regresiva, vista previa
                                (mode "free": compartir · "challenge": onSubmit(blob))
@@ -270,10 +291,9 @@ en dev three.js se sirve sin minificar y tarda mucho en cargar por wifi.
 
 La app detecta estos casos y avisa en pantalla:
 
-- **Navegador dentro de una app** (WeChat, QQ, Weibo, Douyin, Instagram,
-  Facebook…): la cámara suele verse en negro. Aviso con instrucciones para
-  abrir en Safari/Chrome y botón para copiar el enlace. En China los QR se
-  escanean casi siempre con WeChat.
+- **Navegador dentro de una app** (Instagram, Facebook, TikTok): la cámara
+  suele verse en negro. Aviso con instrucciones para abrir en Safari/Chrome y
+  botón para copiar el enlace.
 - **Reproducción automática bloqueada** (iPhone en modo de bajo consumo): botón
   "Toca para activar la cámara".
 - **Cámara abierta sin imagen** durante 5 s: aviso para reintentar o cambiar de

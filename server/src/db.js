@@ -168,6 +168,26 @@ const MIGRATIONS = [
   );
   CREATE INDEX team_goals_event ON team_goals(event_id, sort_order);
   `,
+  // Valor del reto (tier, definido en los ajustes del evento) y avisos de los
+  // organizadores. De paso se igualan los puntos ya otorgados al valor actual
+  // de cada reto: quedaban desfasados si el reto se editaba despues.
+  `
+  ALTER TABLE challenges ADD COLUMN tier TEXT;
+
+  CREATE TABLE announcements (
+    id          INTEGER PRIMARY KEY,
+    event_id    INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    text        TEXT NOT NULL,
+    created_by  INTEGER REFERENCES admins(id) ON DELETE SET NULL,
+    created_at  TEXT NOT NULL
+  );
+  CREATE INDEX announcements_event ON announcements(event_id, id);
+
+  UPDATE submissions
+     SET points_awarded = (SELECT points FROM challenges c WHERE c.id = submissions.challenge_id)
+   WHERE status = 'approved'
+     AND (answer IS NULL OR json_extract(answer, '$.passed'));
+  `,
 ]
 
 function migrate(db) {

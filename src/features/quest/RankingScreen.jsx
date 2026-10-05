@@ -11,7 +11,6 @@ export default function RankingScreen() {
   const [tab, setTab] = useState('people')
   const { data, error, loading, reload } = useAsync(() => getRanking(slug, token), [slug, token])
   const teamLabel = event.settings.teamLabel
-  const ts = event.settings.teamScore
   const myTeam = data?.teams.find((t) => t.id === data.me?.team?.id)
 
   return (
@@ -67,10 +66,10 @@ export default function RankingScreen() {
                     {t.active} de {t.members} participando
                   </small>
                   <small>
-                    Desempeño {t.performance} · Participación {t.participation} · Colectivo {t.collective}
+                    Mejores {t.performance} · Participación {t.participation} · Retos de {teamLabel} {t.collective}
                   </small>
                 </span>
-                <span className="score">{t.score} pts</span>
+                <span className="score">{t.score} XP</span>
               </li>
             ))}
           </ol>
@@ -92,9 +91,8 @@ export default function RankingScreen() {
             </>
           )}
           <p className="muted small center-text">
-            Cada {teamLabel} puede llegar a {ts.performance + ts.participation + ts.collective} puntos: el XP de sus {ts.top.length} mejores
-            integrantes (hasta {ts.performance}), cuántos participan (hasta {ts.participation}) y los retos de {teamLabel} (hasta{' '}
-            {ts.collective}). Tu XP personal no cambia.
+            El XP de una {teamLabel} suma el de sus mejores integrantes (el primero completo y los siguientes cada vez menos), un bono por
+            cada integrante que participa y los retos de {teamLabel}. Quien no juega no suma. Tu XP personal no cambia.
           </p>
         </>
       )}

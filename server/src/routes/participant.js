@@ -108,7 +108,7 @@ export function participantRoutes(svc) {
     }
   }
 
-  function publicChallenge(ch, st, used) {
+  function publicChallenge(ch, st, { used, event }) {
     // De una encuesta solo va el resumen: las preguntas se piden aparte (y con el QR si hace falta).
     const survey = ch.type === 'TRIVIA' && ch.config.survey
     return {
@@ -128,7 +128,7 @@ export function participantRoutes(svc) {
       imageUrl: mediaUrl(ch.imageKey),
       points: ch.points,
       category: ch.category,
-      difficulty: ch.difficulty,
+      tierName: event.settings.pointTiers.find((t) => t.id === ch.tier)?.name ?? null,
       secret: ch.visibility === 'secret',
       requiresApproval: ch.requiresApproval,
       requiresPhoto: ch.requiresPhoto,
@@ -313,10 +313,18 @@ export function participantRoutes(svc) {
     const list = challenges
       .map((ch) => {
         const st = challengeState(ch, ctx)
-        return st && publicChallenge(ch, st, ctx.used)
+        return st && publicChallenge(ch, st, ctx)
       })
       .filter(Boolean)
-    return c.json({ challenges: list, me: me(ev, row), event: publicEvent(ev) })
+    // Avisos de las ultimas 2 horas: el telefono muestra los que aun no vio.
+    const announcements = db
+      .all(
+        `SELECT id, text, created_at FROM announcements
+          WHERE event_id = :eventId AND created_at > :since ORDER BY id DESC LIMIT 5`,
+        { eventId: ev.id, since: new Date(Date.now() - 2 * 3600_000).toISOString() },
+      )
+      .map((n) => ({ id: n.id, text: n.text, createdAt: n.created_at }))
+    return c.json({ challenges: list, me: me(ev, row), event: publicEvent(ev), announcements })
   })
 
   r.get('/events/:slug/challenges/:id', (c) => {
@@ -326,7 +334,7 @@ export function participantRoutes(svc) {
     const { ctx } = stateContext(ev, row)
     const st = challengeState(ch, ctx)
     if (!st) throw notFound('Este reto no existe.')
-    return c.json({ challenge: publicChallenge(ch, st, ctx.used) })
+    return c.json({ challenge: publicChallenge(ch, st, ctx) })
   })
 
   // Evidencia con foto (retos PHOTO y AR). multipart: photo, thumb, clientId,
@@ -435,7 +443,7 @@ export function participantRoutes(svc) {
     const st = challengeState({ ...ch, visibility: 'visible' }, ctx)
     return c.json({
       already: outcome.already,
-      challenge: publicChallenge(ch, st, ctx.used),
+      challenge: publicChallenge(ch, st, ctx),
       ...submissionResult(ev, row, outcome.id),
     })
   })
@@ -467,7 +475,7 @@ export function participantRoutes(svc) {
 
   function surveyHeader(ev, row, ch) {
     const { ctx } = stateContext(ev, row)
-    return publicChallenge(ch, challengeState({ ...ch, visibility: 'visible' }, ctx), ctx.used)
+    return publicChallenge(ch, challengeState({ ...ch, visibility: 'visible' }, ctx), ctx)
   }
 
   // Preguntas para responder o, si ya respondio, sus respuestas y el resultado.

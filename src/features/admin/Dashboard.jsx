@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router'
-import { getStats } from '../../api/admin'
+import { deleteAnnouncement, getStats, listAnnouncements, sendAnnouncement } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, Spinner, TYPE_EMOJI } from '../quest/ui'
 import { useEventAdmin } from './AdminContext'
@@ -34,6 +34,8 @@ export default function Dashboard() {
         <StatTile label="Fotos" value={t.photos} note={`${(t.bytes / 1024 / 1024).toFixed(1)} MB en disco`} />
         <StatTile label="Likes" value={t.likes} />
       </div>
+
+      <Announcements />
 
       <div className="card">
         <h3>Envíos por hora</h3>
@@ -86,10 +88,10 @@ export default function Dashboard() {
                 <th>{event.settings.teamLabel}</th>
                 <th className="num">Inscritos</th>
                 <th className="num">Activos</th>
-                <th className="num">Desempeño</th>
+                <th className="num">Mejores</th>
                 <th className="num">Participación</th>
-                <th className="num">Colectivo</th>
-                <th className="num">Puntos</th>
+                <th className="num">Retos</th>
+                <th className="num">XP</th>
               </tr>
             </thead>
             <tbody>
@@ -112,6 +114,68 @@ export default function Dashboard() {
         </div>
       </div>
     </section>
+  )
+}
+
+/** Avisos a todos los participantes: les aparecen como el aviso de "nuevo reto". */
+function Announcements() {
+  const { event } = useEventAdmin()
+  const { data, error, setData } = useAsync(() => listAnnouncements(event.id), [event.id])
+  const [text, setText] = useState('')
+  const [busy, setBusy] = useState(false)
+  const [sendError, setSendError] = useState(null)
+
+  const send = async (e) => {
+    e.preventDefault()
+    setBusy(true)
+    setSendError(null)
+    try {
+      setData(await sendAnnouncement(event.id, text))
+      setText('')
+    } catch (err) {
+      setSendError(err)
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  return (
+    <div className="card">
+      <h3>Avisos a los participantes</h3>
+      <p className="muted small">Les aparece en pantalla en menos de un minuto, a quienes tengan la app abierta o la abran en las próximas 2 horas.</p>
+      <form className="toolbar wrap" onSubmit={send}>
+        <input
+          className="search"
+          value={text}
+          onChange={(e) => setText(e.target.value)}
+          placeholder="La charla 2 empieza en 5 minutos"
+          maxLength={200}
+          required
+          minLength={2}
+        />
+        <button className="btn primary" disabled={busy}>
+          Enviar aviso
+        </button>
+      </form>
+      <ErrorBox error={sendError || error} />
+      <ul className="team-list">
+        {data?.announcements.slice(0, 5).map((n) => (
+          <li key={n.id}>
+            <span>
+              📣 {n.text}
+              <br />
+              <small className="muted">
+                {new Date(n.createdAt).toLocaleTimeString('es-EC', { hour: '2-digit', minute: '2-digit' })}
+                {n.author && ` · ${n.author}`}
+              </small>
+            </span>
+            <button className="btn small" onClick={async () => setData(await deleteAnnouncement(n.id))}>
+              Borrar
+            </button>
+          </li>
+        ))}
+      </ul>
+    </div>
   )
 }
 

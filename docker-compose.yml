@@ -1,22 +1,21 @@
 # SAC Quest con Docker (guia: docs/docker.md)
 #
-#   cp server/.env.example server/.env    # APP_DOMAIN, APP_SECRET (y TUNNEL_TOKEN)
+#   cp server/.env.example server/.env    # APP_DOMAIN, APP_SECRET y TUNNEL_TOKEN
 #   docker compose up -d --build                     # solo la app
 #   docker compose --profile tunnel up -d --build    # app + Cloudflare Tunnel
-#   docker compose --profile quick up -d --build     # app + tunel de prueba (sin dominio)
 #
 # Opcional, como variables al lanzar (o en el .env de la raiz):
-#   RNR_DATA_DIR=/mnt/ssd/rnr-quest   datos en una carpeta del host (SSD) en vez del volumen
-#   RNR_BACKUP_DIR=/media/usb/backup  destino de `npm run backup` (por defecto ./backups)
-#   RNR_BIND=0.0.0.0                  abre el puerto 8787 a la red local
+#   SAC_DATA_DIR=/mnt/ssd/sac-quest   datos en una carpeta del host (SSD) en vez del volumen
+#   SAC_BACKUP_DIR=/media/usb/backup  destino de `npm run backup` (por defecto ./backups)
+#   SAC_BIND=0.0.0.0                  abre el puerto 8787 a la red local
 
-# Nombre fijo: el volumen se llama rnr-quest_rnr-data sin importar la carpeta
-name: rnr-quest
+# Nombre fijo: el volumen se llama sac-quest_sac-data sin importar la carpeta
+name: sac-quest
 
 services:
   app:
     build: .
-    image: rnr-quest:latest
+    image: sac-quest:latest
     restart: unless-stopped
     # APP_DOMAIN, APP_SECRET, MAX_PHOTO_MB...
     env_file: server/.env
@@ -28,12 +27,12 @@ services:
       DATA_DIR: /data
       STATIC_DIR: /app/dist
     # Solo en localhost: a internet se llega por el tunel (contenedor cloudflared).
-    # RNR_BIND=0.0.0.0 la abre a la red local (probar por http://<ip-de-la-pi>:8787).
+    # SAC_BIND=0.0.0.0 la abre a la red local (probar por http://<ip-de-la-pi>:8787).
     ports:
-      - "${RNR_BIND:-127.0.0.1}:8787:8787"
+      - "${SAC_BIND:-127.0.0.1}:8787:8787"
     volumes:
-      - ${RNR_DATA_DIR:-rnr-data}:/data
-      - ${RNR_BACKUP_DIR:-./backups}:/backups
+      - ${SAC_DATA_DIR:-sac-data}:/data
+      - ${SAC_BACKUP_DIR:-./backups}:/backups
     logging:
       driver: local
       options:
@@ -56,16 +55,5 @@ services:
       options:
         max-size: 10m
 
-  # Tunel rapido SIN dominio ni cuenta, para pruebas sueltas: da una URL https://<algo>.trycloudflare.com (ver los logs).
-  # Cambia en cada arranque. Solo con --profile quick.
-  cloudflared-quick:
-    image: cloudflare/cloudflared:latest
-    profiles: [quick]
-    restart: unless-stopped
-    command: tunnel --no-autoupdate --url http://app:8787
-    depends_on:
-      app:
-        condition: service_healthy
-
 volumes:
-  rnr-data:
+  sac-data:

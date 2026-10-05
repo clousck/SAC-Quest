@@ -4,7 +4,7 @@ import { claimQr } from '../../api/quest'
 import { prepareImage } from '../../shared/imageResize'
 import { useToast } from '../../shared/Toast'
 import { useQuest } from './QuestContext'
-import { Celebration, ChallengeIcon, DIFFICULTY_LABEL, ErrorBox, Screen, StateBadge, TYPE_LABEL, formatWhen } from './ui'
+import { Celebration, ChallengeIcon, ErrorBox, Screen, StateBadge, TYPE_LABEL, formatWhen } from './ui'
 import { sendEvidence } from './uploadQueue'
 
 // El booth (three.js + Watt) solo se descarga si se abre un reto AR.
@@ -46,7 +46,7 @@ export default function ChallengeScreen() {
           <span className="chip accent">+{c.points} XP</span>
           <span className="chip">{TYPE_LABEL[c.type]}</span>
           {c.category && <span className="chip">{c.category}</span>}
-          <span className="chip">{DIFFICULTY_LABEL[c.difficulty]}</span>
+          {c.tierName && <span className="chip">{c.tierName}</span>}
         </p>
       </div>
 

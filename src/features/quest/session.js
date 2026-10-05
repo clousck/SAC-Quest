@@ -1,7 +1,5 @@
 // Sesion de la persona, una por evento (puede estar en varios eventos).
-// El prefijo conserva el nombre anterior (RNR Quest): cambiarlo cerraria la
-// sesion de quienes ya entraron.
-const PREFIX = 'rnrquest:v1:'
+const PREFIX = 'sacquest:v1:'
 
 export const session = {
   get: (slug) => localStorage.getItem(PREFIX + slug),

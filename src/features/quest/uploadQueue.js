@@ -16,7 +16,7 @@ export class QueuedError extends Error {
   }
 }
 
-const DB_NAME = 'rnrquest'
+const DB_NAME = 'sacquest'
 const STORE = 'uploads'
 
 function openDb() {

@@ -22,8 +22,8 @@ const EMPTY = {
   description: '',
   icon: '📷',
   points: 20,
+  tier: 'normal',
   category: '',
-  difficulty: 'easy',
   status: 'active',
   visibility: 'visible',
   availableFrom: '',
@@ -41,6 +41,9 @@ const TYPES = [
   ['TRIVIA', '📝 Encuesta', 'Preguntas sobre una charla. Se responde una sola vez y se corrige sola.'],
 ]
 
+// Opcion del selector para un reto con puntos puestos a mano antes de existir los valores.
+const CUSTOM = '__custom'
+
 const ICONS = ['📷', '🤝', '🐱', '📍', '🎤', '🧑‍🤝‍🧑', '🌐', '💡', '⚡', '🏆', '🎯', '🔒', '🍕', '🎉', '🤖', '🔌']
 
 function toForm(c) {
@@ -50,8 +53,9 @@ function toForm(c) {
     description: c.description,
     icon: c.icon,
     points: c.points,
+    // Sin valor: puntos puestos a mano (retos anteriores) o un reto sin XP.
+    tier: c.tier ?? (c.points ? CUSTOM : ''),
     category: c.category,
-    difficulty: c.difficulty,
     status: c.status,
     visibility: c.visibility,
     availableFrom: toLocalInput(c.availableFrom),
@@ -69,9 +73,10 @@ function toBody(f) {
     title: f.title,
     description: f.description,
     icon: f.icon,
-    points: Number(f.points) || 0,
+    // Con un valor elegido, los puntos los pone el servidor.
+    tier: f.tier && f.tier !== CUSTOM ? f.tier : null,
+    points: f.tier === CUSTOM ? Number(f.points) || 0 : 0,
     category: f.category,
-    difficulty: f.difficulty,
     status: f.status,
     visibility: f.visibility,
     availableFrom: fromLocalInput(f.availableFrom),
@@ -88,7 +93,8 @@ export default function ChallengeForm() {
   const { isAdmin } = useAdmin()
   const navigate = useNavigate()
   const isNew = !challengeId
-  const [form, setForm] = useState(EMPTY)
+  // Un reto nuevo arranca con el segundo valor del evento (el "normal").
+  const [form, setForm] = useState(() => ({ ...EMPTY, tier: (event.settings.pointTiers[1] ?? event.settings.pointTiers[0]).id }))
   const [challenge, setChallenge] = useState(null)
   const [others, setOthers] = useState([])
   const [loading, setLoading] = useState(!isNew)
@@ -217,8 +223,16 @@ export default function ChallengeForm() {
               <input value={form.icon} onChange={set('icon')} maxLength={16} />
             </label>
             <label>
-              Puntos (XP)
-              <input type="number" min="0" max="10000" value={form.points} onChange={set('points')} required />
+              Valor
+              <select value={form.tier} onChange={set('tier')}>
+                {event.settings.pointTiers.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    {t.name} · {t.points} XP
+                  </option>
+                ))}
+                <option value="">Sin XP (solo cuenta para la {event.settings.teamLabel})</option>
+                {form.tier === CUSTOM && <option value={CUSTOM}>Actual · {form.points} XP</option>}
+              </select>
             </label>
             <label>
               Categoría
@@ -228,14 +242,6 @@ export default function ChallengeForm() {
                   <option key={c} value={c} />
                 ))}
               </datalist>
-            </label>
-            <label>
-              Dificultad
-              <select value={form.difficulty} onChange={set('difficulty')}>
-                <option value="easy">Fácil</option>
-                <option value="medium">Media</option>
-                <option value="hard">Difícil</option>
-              </select>
             </label>
           </div>
           <div className="icon-picker">

@@ -1,7 +1,7 @@
 import { Link } from 'react-router'
 import { listChallenges, reorderChallenges, updateChallenge } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
-import { DIFFICULTY_LABEL, ErrorBox, Spinner, TYPE_LABEL } from '../quest/ui'
+import { ErrorBox, Spinner, TYPE_LABEL } from '../quest/ui'
 import { useAdmin, useEventAdmin } from './AdminContext'
 
 export const CH_STATUS = { draft: 'Borrador', active: 'Activo', inactive: 'Inactivo' }
@@ -29,6 +29,8 @@ export default function ChallengesAdmin() {
     const { challenge } = await updateChallenge(ch.id, { status })
     setData((d) => ({ challenges: d.challenges.map((c) => (c.id === ch.id ? challenge : c)) }))
   }
+
+  const tierName = (c) => event.settings.pointTiers.find((t) => t.id === c.tier)?.name
 
   const patch = async (ch, body) => {
     const { challenge } = await updateChallenge(ch.id, body)
@@ -89,7 +91,8 @@ export default function ChallengesAdmin() {
                 <strong>{c.title}</strong>
               </Link>
               <span className="muted small">
-                {TYPE_LABEL[c.type]} · {c.points} XP · {DIFFICULTY_LABEL[c.difficulty]}
+                {TYPE_LABEL[c.type]} · {c.points} XP
+                {tierName(c) && ` · ${tierName(c)}`}
                 {c.category && ` · ${c.category}`}
                 {c.visibility === 'secret' && ' · 🤫 secreto'}
                 {c.unlockRule && ' · 🔒 con desbloqueo'}

@@ -2,7 +2,7 @@ import { request, upload } from './client'
 
 // API del panel. La sesion se guarda aparte de las de participantes.
 
-const KEY = 'rnrquest:admin'
+const KEY = 'sacquest:admin'
 export const adminSession = {
   get: () => localStorage.getItem(KEY),
   set: (token) => localStorage.setItem(KEY, token),
@@ -10,7 +10,7 @@ export const adminSession = {
 }
 
 /** Sesion vencida o cerrada en otro lado: el panel vuelve al login. */
-export const ADMIN_LOGOUT_EVENT = 'rnrquest:admin-logout'
+export const ADMIN_LOGOUT_EVENT = 'sacquest:admin-logout'
 
 async function call(path, opts = {}) {
   try {
@@ -56,6 +56,10 @@ export function uploadChallengeImage(id, blob) {
   form.set('image', blob, 'imagen.jpg')
   return upload(`/admin/challenges/${id}/image`, form, { token: adminSession.get() })
 }
+
+export const listAnnouncements = (eventId) => call(`/events/${eventId}/announcements`)
+export const sendAnnouncement = (eventId, text) => post(`/events/${eventId}/announcements`, { text })
+export const deleteAnnouncement = (id) => del(`/announcements/${id}`)
 
 export const getSurveyResults = (id) => call(`/challenges/${id}/survey-results`)
 

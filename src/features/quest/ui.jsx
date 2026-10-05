@@ -3,7 +3,6 @@ import { mediaUrl } from '../../api/client'
 
 export const TYPE_LABEL = { PHOTO: '📷 Foto', AR: '🐱 AR con Watt', QR: '📍 Checkpoint QR', TRIVIA: '📝 Encuesta' }
 export const TYPE_EMOJI = { PHOTO: '📷', AR: '🐱', QR: '📍', TRIVIA: '📝' }
-export const DIFFICULTY_LABEL = { easy: 'Fácil', medium: 'Media', hard: 'Difícil' }
 
 export const STATE_LABEL = {
   available: 'Disponible',

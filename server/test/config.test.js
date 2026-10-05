@@ -9,13 +9,9 @@ test('APP_DOMAIN se normaliza a una URL https', () => {
   assert.equal(publicUrl(''), '')
 })
 
-test('CORS usa APP_DOMAIN por defecto y CORS_ORIGINS si se define', () => {
+test('CORS solo admite el APP_DOMAIN', () => {
   assert.deepEqual(loadConfig({ APP_DOMAIN: 'quest.ieee.org' }).corsOrigins, ['https://quest.ieee.org'])
   assert.equal(loadConfig({ APP_DOMAIN: 'quest.ieee.org' }).appUrl, 'https://quest.ieee.org')
-  assert.deepEqual(
-    loadConfig({ APP_DOMAIN: 'quest.ieee.org', CORS_ORIGINS: 'https://a.org, https://b.org' }).corsOrigins,
-    ['https://a.org', 'https://b.org'],
-  )
   assert.deepEqual(loadConfig({}).corsOrigins, [], 'sin dominio (desarrollo): cualquier origen')
 })
 

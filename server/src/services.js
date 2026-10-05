@@ -5,10 +5,7 @@ import { badRequest, createRateLimiter, isJpeg } from './util.js'
 export function createServices({ db, storage, config }) {
   const limit = createRateLimiter()
 
-  /**
-   * URL firmada, relativa a la base de la API (el frontend le antepone
-   * VITE_API_URL). Asi funciona igual con la API en otro dominio.
-   */
+  /** URL firmada, relativa a la base de la API (el frontend le antepone /api). */
   function mediaUrl(key, { download = false } = {}) {
     if (!key) return null
     const exp = mediaExpiry()

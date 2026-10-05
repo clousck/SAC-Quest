@@ -1,16 +1,9 @@
-// Navegadores dentro de apps. En China los QR se escanean casi siempre con
-// WeChat, que abre el enlace en su propio navegador: ahi la camara suele
-// verse en negro y hay menos memoria para graficos 3D.
+// Navegadores dentro de apps: si el enlace se abre desde Instagram, Facebook
+// o TikTok, la camara suele verse en negro y hay menos memoria para graficos 3D.
 const IN_APP = [
-  [/MicroMessenger/i, 'WeChat'],
-  [/\bQQ\//i, 'QQ'],
-  [/Weibo/i, 'Weibo'],
-  [/AlipayClient/i, 'Alipay'],
-  [/aweme|Douyin/i, 'Douyin'],
-  [/BytedanceWebview|musical_ly|TikTok/i, 'TikTok'],
   [/Instagram/i, 'Instagram'],
   [/FBAN|FBAV|FB_IAB/i, 'Facebook'],
-  [/\bLine\//i, 'LINE'],
+  [/BytedanceWebview|musical_ly|TikTok/i, 'TikTok'],
 ]
 
 /** Nombre de la app si la pagina esta abierta en su navegador interno, o null. */

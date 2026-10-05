@@ -32,6 +32,7 @@ export default function SettingsAdmin() {
       <AccessCard />
       <EventCard />
       <TeamsCard />
+      <PointTiersCard />
       <TeamScoreCard />
       <TeamGoalsCard />
       <LevelsCard />
@@ -297,16 +298,15 @@ function TeamScoreCard() {
   const label = event.settings.teamLabel
   const [f, setF] = useState(() => {
     const ts = event.settings.teamScore
+    const pct = (v) => (ts.performance ? Math.round((100 * v) / ts.performance) : 0)
     return {
-      performance: ts.performance,
-      participation: ts.participation,
-      collective: ts.collective,
-      participationRef: ts.participationRef,
       top: ts.top.map((w) => Math.round(w * 100)).join(', '),
+      participation: pct(ts.participation),
+      participationRef: ts.participationRef,
+      collective: pct(ts.collective),
     }
   })
   const set = (k) => (e) => setF((x) => ({ ...x, [k]: e.target.value }))
-  const total = Number(f.performance) + Number(f.participation) + Number(f.collective)
 
   const submit = (e) => {
     e.preventDefault()
@@ -316,8 +316,9 @@ function TeamScoreCard() {
         teamLabel,
         accent,
         likes,
+        // Se guardan como pesos frente a un desempeño de 100.
         teamScore: {
-          performance: Number(f.performance),
+          performance: 100,
           participation: Number(f.participation),
           collective: Number(f.collective),
           participationRef: Number(f.participationRef),
@@ -332,48 +333,96 @@ function TeamScoreCard() {
 
   return (
     <form className="card form" onSubmit={submit}>
-      <h3>Puntaje por {label}</h3>
+      <h3>XP por {label}</h3>
       <p className="muted small">
-        Cada {label} puede llegar a <strong>{total || 0} puntos</strong>. No cambia el XP de las personas: solo decide cómo se compara una{' '}
-        {label} con otra. Los inscritos que no participan no suman.
+        Cómo se compara una {label} con otra. No cambia el XP de las personas, y los inscritos que no participan no suman.
       </p>
       <fieldset disabled={!isAdmin}>
         <div className="form-grid">
           <label>
-            Desempeño (puntos)
-            <input type="number" min="0" value={f.performance} onChange={set('performance')} required />
-          </label>
-          <label>
-            Aporte de los mejores (%)
+            Cuánto aporta cada uno de los mejores (%)
             <input value={f.top} onChange={set('top')} placeholder="100, 60, 40, 25, 15" required />
           </label>
           <label>
-            Participación (puntos)
-            <input type="number" min="0" value={f.participation} onChange={set('participation')} required />
+            Bono de participación (% del máximo de los mejores)
+            <input type="number" min="0" max="1000" value={f.participation} onChange={set('participation')} required />
           </label>
           <label>
-            Activos para el máximo
+            Integrantes activos para el bono completo
             <input type="number" min="1" value={f.participationRef} onChange={set('participationRef')} required />
           </label>
           <label>
-            Retos de {label} (puntos)
-            <input type="number" min="0" value={f.collective} onChange={set('collective')} required />
+            Retos de {label} (% del máximo de los mejores)
+            <input type="number" min="0" max="1000" value={f.collective} onChange={set('collective')} required />
           </label>
         </div>
       </fieldset>
       <p className="muted small">
-        <strong>Desempeño:</strong> el XP del mejor integrante cuenta completo y el de los siguientes, el porcentaje indicado; el máximo es que
-        todos ellos tengan todo el XP de los retos publicados. <strong>Participación:</strong> crece con cada integrante que tiene al menos un
-        reto aprobado con puntos, cada vez un poco menos, hasta el máximo. <strong>Retos de {label}:</strong> ver abajo.
+        <strong>Mejores:</strong> el XP del mejor integrante cuenta completo y el de los siguientes, el porcentaje indicado.{' '}
+        <strong>Participación:</strong> un bono que crece con cada integrante que tiene al menos un reto aprobado con puntos, cada vez un
+        poco menos. <strong>Retos de {label}:</strong> ver abajo. Los dos porcentajes se miden frente a lo máximo que pueden sumar los
+        mejores (todos ellos con todos los retos del evento).
       </p>
       <ErrorBox error={error} />
       {isAdmin && (
         <div className="row">
-          <button className="btn primary">Guardar puntaje</button>
+          <button className="btn primary">Guardar</button>
           {saved && <span className="saved">✓ Guardado</span>}
         </div>
       )}
     </form>
+  )
+}
+
+/** Valores de reto: cada reto elige uno y de ahi salen sus puntos. */
+function PointTiersCard() {
+  const { event } = useEventAdmin()
+  const { isAdmin } = useAdmin()
+  const { save, error, saved } = useSaver()
+  const [tiers, setTiers] = useState(event.settings.pointTiers)
+  const set = (i, k) => (e) => setTiers((ts) => ts.map((t, j) => (j === i ? { ...t, [k]: e.target.value } : t)))
+
+  const submit = () => {
+    const { teamLabel, accent, likes } = event.settings
+    save({ settings: { teamLabel, accent, likes, pointTiers: tiers.map((t) => ({ ...t, points: Number(t.points) || 0 })) } })
+  }
+
+  return (
+    <div className="card form">
+      <h3>Valores de reto</h3>
+      <p className="muted small">
+        Cada reto elige un valor y de ahí salen sus puntos. Si cambias los puntos de un valor, cambian todos sus retos y también los
+        puntos ya ganados con ellos.
+      </p>
+      <fieldset disabled={!isAdmin} className="levels">
+        {tiers.map((t, i) => (
+          <div key={i} className="row">
+            <input value={t.name} onChange={set(i, 'name')} aria-label="Nombre del valor" maxLength={20} />
+            <input type="number" min="0" value={t.points} onChange={set(i, 'points')} aria-label="Puntos" />
+            <span className="muted small">XP</span>
+            {tiers.length > 1 && (
+              <button type="button" className="btn small" onClick={() => setTiers((ts) => ts.filter((_, j) => j !== i))}>
+                ✕
+              </button>
+            )}
+          </div>
+        ))}
+      </fieldset>
+      {isAdmin && (
+        <div className="row">
+          {tiers.length < 8 && (
+            <button type="button" className="btn small" onClick={() => setTiers((ts) => [...ts, { name: 'Nuevo valor', points: 30 }])}>
+              + Valor
+            </button>
+          )}
+          <button className="btn primary" onClick={submit}>
+            Guardar valores
+          </button>
+          {saved && <span className="saved">✓ Guardado</span>}
+        </div>
+      )}
+      <ErrorBox error={error} />
+    </div>
   )
 }
 
@@ -391,7 +440,6 @@ function TeamGoalsCard() {
   const chList = challenges.data?.challenges ?? []
   const list = goals.data?.goals ?? []
   const totalPoints = list.reduce((sum, g) => sum + g.points, 0)
-  const collective = event.settings.teamScore.collective
 
   const saveGoal = async (body) => {
     setError(null)
@@ -408,8 +456,8 @@ function TeamGoalsCard() {
     <div className="card">
       <h3>Retos de {label}</h3>
       <p className="muted small">
-        Se cumplen una sola vez, cuando varios integrantes distintos de la {label} completan un reto. Reparten los {collective} puntos
-        colectivos según su valor. Para una foto grupal, crea un reto de foto de 0 XP y pide 1 integrante.
+        Se cumplen una sola vez, cuando varios integrantes distintos de la {label} completan un reto. Se reparten el XP de retos de{' '}
+        {label} según su valor. Para una foto grupal, crea un reto de foto de 0 XP y pide 1 integrante.
       </p>
       <ul className="team-list">
         {list.map((g) =>
@@ -420,7 +468,7 @@ function TeamGoalsCard() {
           ) : (
             <li key={g.id}>
               <span>
-                {g.icon} <strong>{g.name}</strong> · {Math.round((collective * g.points) / totalPoints)} pts
+                {g.icon} <strong>{g.name}</strong> · {Math.round((100 * g.points) / totalPoints)} %
                 <br />
                 <small className="muted">
                   {g.members} o más integrantes completan «{chList.find((c) => c.id === g.challengeId)?.title ?? '¿?'}»
@@ -443,7 +491,7 @@ function TeamGoalsCard() {
           ),
         )}
       </ul>
-      {!list.length && <p className="muted small">Todavía no hay retos de {label}: nadie suma puntos colectivos.</p>}
+      {!list.length && <p className="muted small">Todavía no hay retos de {label}: nadie suma esa parte del XP.</p>}
       {editing === 'new' && <TeamGoalForm challenges={chList} onSave={saveGoal} onCancel={() => setEditing(null)} />}
       {isAdmin && editing !== 'new' && chList.length > 0 && (
         <button className="btn" onClick={() => setEditing('new')}>

@@ -228,10 +228,37 @@ export function adminRoutes(svc) {
         accent: /^#[0-9a-f]{6}$/i.test(v.accent) ? v.accent : DEFAULT_SETTINGS.accent,
         likes: v.likes !== false,
       }
-      // Solo si viene: los demas formularios de ajustes no lo mandan.
+      // Solo si vienen: los demas formularios de ajustes no los mandan.
       if (v.teamScore) settings.teamScore = teamScoreFields(v.teamScore)
+      if (v.pointTiers) settings.pointTiers = pointTierFields(v.pointTiers)
       return settings
     },
+  }
+
+  function pointTierFields(v) {
+    if (!Array.isArray(v) || !v.length || v.length > 8) throw badRequest('Debe haber entre 1 y 8 valores de reto.')
+    const ids = new Set()
+    return v.map((t, i) => {
+      // El id se conserva al editar: es lo que guarda cada reto.
+      let id = typeof t.id === 'string' && /^[a-z0-9]{1,12}$/.test(t.id) && !ids.has(t.id) ? t.id : null
+      for (let k = 1; !id; k++) if (!ids.has(`v${k}`)) id = `v${k}`
+      ids.add(id)
+      return {
+        id,
+        name: str(t.name, `nombre del valor ${i + 1}`, { min: 1, max: 20 }),
+        points: int(t.points, `puntos del valor ${i + 1}`, { min: 0, max: 10000 }),
+      }
+    })
+  }
+
+  /** Los puntos ya otorgados siguen al valor actual del reto (una encuesta fallada sigue en 0). */
+  function syncAwardedPoints(challengeId, points) {
+    db.run(
+      `UPDATE submissions SET points_awarded = :points
+        WHERE challenge_id = :challengeId AND status = 'approved'
+          AND (answer IS NULL OR json_extract(answer, '$.passed'))`,
+      { challengeId, points },
+    )
   }
 
   function teamScoreFields(v) {
@@ -298,6 +325,20 @@ export function adminRoutes(svc) {
       settings: ['settings', json],
       joinCode: ['join_code'],
     })
+    // Si cambio lo que vale un valor, sus retos (y los puntos ya dados) lo siguen.
+    if (body.settings?.pointTiers) {
+      const tiers = new Map(data.settings.pointTiers.map((t) => [t.id, t.points]))
+      db.tx(() => {
+        for (const ch of db.all('SELECT id, tier, points FROM challenges WHERE event_id = :id AND tier IS NOT NULL', { id: ev.id })) {
+          if (!tiers.has(ch.tier)) {
+            db.run('UPDATE challenges SET tier = NULL WHERE id = :id', { id: ch.id })
+          } else if (tiers.get(ch.tier) !== ch.points) {
+            db.run('UPDATE challenges SET points = :points WHERE id = :id', { id: ch.id, points: tiers.get(ch.tier) })
+            syncAwardedPoints(ch.id, tiers.get(ch.tier))
+          }
+        }
+      })
+    }
     return c.json({ event: eventSummary(getEvent(ev.id)) })
   })
 
@@ -353,10 +394,10 @@ export function adminRoutes(svc) {
         if (imageKey) images.push([row.image_key, imageKey])
         const newId = Number(
           db.run(
-            `INSERT INTO challenges (event_id, type, title, description, icon, image_key, points, category, difficulty,
+            `INSERT INTO challenges (event_id, type, title, description, icon, image_key, points, category, tier,
                 status, visibility, unlock_rule, available_from, available_until, max_completions,
                 requires_approval, requires_photo, config, qr_code, sort_order, created_at, updated_at)
-             SELECT :eventId, type, title, description, icon, :imageKey, points, category, difficulty,
+             SELECT :eventId, type, title, description, icon, :imageKey, points, category, tier,
                 'draft', visibility, unlock_rule, NULL, NULL, max_completions,
                 requires_approval, requires_photo, config, :qrCode, sort_order, :t, :t
                FROM challenges WHERE id = :srcId`,
@@ -472,7 +513,7 @@ export function adminRoutes(svc) {
     icon: (v) => str(v, 'icono', { max: 16 }),
     points: (v) => int(v, 'puntos', { min: 0, max: 10000 }),
     category: (v) => str(v, 'categoría', { max: 40 }),
-    difficulty: (v) => oneOf(v, 'dificultad', ['easy', 'medium', 'hard']),
+    tier: (v) => (v == null || v === '' ? null : str(v, 'valor', { max: 12 })),
     status: (v) => oneOf(v, 'estado', ['draft', 'active', 'inactive']),
     visibility: (v) => oneOf(v, 'visibilidad', ['visible', 'secret']),
     unlockRule: normalizeUnlockRule,
@@ -492,7 +533,7 @@ export function adminRoutes(svc) {
     icon: ['icon'],
     points: ['points'],
     category: ['category'],
-    difficulty: ['difficulty'],
+    tier: ['tier'],
     status: ['status'],
     visibility: ['visibility'],
     unlockRule: ['unlock_rule', json],
@@ -525,6 +566,14 @@ export function adminRoutes(svc) {
     if (data.availableFrom && data.availableUntil && data.availableFrom > data.availableUntil) {
       throw badRequest('«Disponible hasta» debe ser posterior a «disponible desde».')
     }
+  }
+
+  /** Con un valor elegido, los puntos del reto son los de ese valor. */
+  function applyTier(data, ev) {
+    if (!data.tier) return
+    const tier = ev.settings.pointTiers.find((t) => t.id === data.tier)
+    if (!tier) throw badRequest('Ese valor de reto no existe en este evento.')
+    data.points = tier.points
   }
 
   // Los checkpoints y las encuestas tienen un QR propio.
@@ -566,6 +615,7 @@ export function adminRoutes(svc) {
     if (!data.type) throw badRequest('Falta «tipo»')
     if (!data.title) throw badRequest('Falta «título»')
     applyTypeRules(data, data.type)
+    applyTier(data, ev)
     applySurvey(data, body, data.type, null)
     const t = now()
     const id = Number(
@@ -595,10 +645,12 @@ export function adminRoutes(svc) {
     const data = pick(body, challengeFields)
     const type = data.type ?? ch.type
     applyTypeRules(data, type)
+    applyTier(data, getEvent(ch.eventId))
     applySurvey(data, body, type, ch)
     if (hasQr(type) && !ch.qrCode) data.qrCode = uniqueCode('challenges', 'qr_code', 6)
     data.updatedAt = now()
     update('challenges', ch.id, data, challengeColumns)
+    if (data.points !== undefined && data.points !== ch.points) syncAwardedPoints(ch.id, data.points)
     return c.json({ challenge: adminChallenge(getChallenge(ch.id)) })
   })
 
@@ -762,6 +814,40 @@ export function adminRoutes(svc) {
     const b = badgeOf(c)
     db.run('DELETE FROM badges WHERE id = :id', { id: b.id })
     return c.json({ badges: listBadges(b.event_id) })
+  })
+
+  // --- avisos a los participantes ---
+  // Les llegan con el sondeo de retos, como el aviso de "nuevo reto".
+
+  const listAnnouncements = (eventId) =>
+    db
+      .all(
+        `SELECT n.id, n.text, n.created_at, a.name AS author
+           FROM announcements n LEFT JOIN admins a ON a.id = n.created_by
+          WHERE n.event_id = :eventId ORDER BY n.id DESC LIMIT 20`,
+        { eventId },
+      )
+      .map((n) => ({ id: n.id, text: n.text, createdAt: n.created_at, author: n.author }))
+
+  r.get('/events/:eventId/announcements', (c) => c.json({ announcements: listAnnouncements(eventParam(c).id) }))
+
+  r.post('/events/:eventId/announcements', async (c) => {
+    const ev = eventParam(c)
+    const body = await jsonBody(c)
+    db.run('INSERT INTO announcements (event_id, text, created_by, created_at) VALUES (:eventId, :text, :by, :t)', {
+      eventId: ev.id,
+      text: str(body.text, 'aviso', { min: 2, max: 200 }),
+      by: c.get('admin').id,
+      t: now(),
+    })
+    return c.json({ announcements: listAnnouncements(ev.id) }, 201)
+  })
+
+  r.delete('/announcements/:id', (c) => {
+    const n = db.get('SELECT * FROM announcements WHERE id = :id', { id: int(c.req.param('id'), 'id') })
+    if (!n) throw notFound('Aviso no encontrado.')
+    db.run('DELETE FROM announcements WHERE id = :id', { id: n.id })
+    return c.json({ announcements: listAnnouncements(n.event_id) })
   })
 
   // --- retos de Rama (puntos colectivos) ---

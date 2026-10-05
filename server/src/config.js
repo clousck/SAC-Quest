@@ -28,12 +28,9 @@ export function loadConfig(env = process.env) {
     // URL publica donde abren los participantes (APP_DOMAIN). Con ella se
     // arman los QR aunque el panel se abra por localhost o por la IP local.
     appUrl,
-    // Origenes permitidos para CORS. Por defecto, el propio APP_DOMAIN.
-    // Vacio = cualquiera: la API usa tokens bearer, no cookies.
-    corsOrigins: (env.CORS_ORIGINS || appUrl)
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean),
+    // Origen permitido para CORS: el propio APP_DOMAIN. Sin dominio
+    // (desarrollo) vale cualquiera: la API usa tokens bearer, no cookies.
+    corsOrigins: appUrl ? [appUrl] : [],
     // Opcional: carpeta del frontend compilado (dist/) para servir todo
     // desde la Pi con un solo dominio.
     staticDir: env.STATIC_DIR ? resolve(env.STATIC_DIR) : '',

@@ -24,7 +24,8 @@ const UI_SELECTOR = 'button, .top-bar, .bottom-bar, .preview, .banner'
  * Modos de AR, segun el dispositivo:
  *  - webxr:     Android/Chrome. Watt en el piso, poses y foto dentro de la pagina.
  *  - quicklook: iPhone/iPad. Quick Look con la pose elegida; la foto se toma
- *               con el boton de captura de Quick Look.
+ *               con el boton de captura de Quick Look y queda en la galeria
+ *               (en un reto se sube desde ahi al volver).
  *  - none:      solo el modo camara con Watt encima.
  */
 async function detectAR() {
@@ -49,6 +50,7 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
   const stageRef = useRef(null)
   const boothRef = useRef(null)
   const viewRef = useRef(null)
+  const galleryRef = useRef(null)
   // Arranca con la trasera; el boton ⇄ cambia a la frontal (selfie).
   const [facing, setFacing] = useState('environment')
   const [pose, setPose] = useState(START_POSE)
@@ -90,11 +92,9 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
     return () => el.removeEventListener('pointerdown', requestMotionPermission)
   }, [])
 
-  // En un reto, Quick Look (iPhone) no sirve: abre fuera de la pagina y la
-  // foto nunca vuelve. Se queda en el modo camara, que si entrega la foto.
   useEffect(() => {
-    detectAR().then((m) => setArMode(challenge && m === 'quicklook' ? 'none' : m))
-  }, [challenge])
+    detectAR().then(setArMode)
+  }, [])
 
   // La pagina no se desplaza mientras el booth esta abierto.
   useEffect(() => {
@@ -214,6 +214,7 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
             viewW: view.clientWidth,
             viewH: view.clientHeight,
             rotation,
+            sensor: !challenge,
           })
       setPhoto({ blob, url: URL.createObjectURL(blob) })
     } catch (e) {
@@ -389,8 +390,28 @@ export default function WattBooth({ mode = 'free', onSubmit, onExit }) {
             {arMode === 'quicklook' && loaded && !usdz ? 'Preparando AR…' : 'Poner a Watt en el piso (AR)'}
           </button>
         )}
-        {arMode === 'quicklook' && !inAR && (
+        {arMode === 'quicklook' && !inAR && !challenge && (
           <p className="ar-note">En AR, toma la foto con el botón de foto de esa pantalla o con una captura de pantalla.</p>
+        )}
+        {/* Quick Look abre fuera de la pagina: la foto queda en la galeria y se sube desde ahi. */}
+        {arMode === 'quicklook' && !inAR && challenge && (
+          <>
+            <p className="ar-note">En AR, toma la foto con el botón de esa pantalla. Al volver, súbela desde tu galería.</p>
+            <input
+              ref={galleryRef}
+              type="file"
+              accept="image/*"
+              hidden
+              onChange={(e) => {
+                const file = e.target.files?.[0]
+                e.target.value = ''
+                if (file) setPhoto({ blob: file, url: URL.createObjectURL(file) })
+              }}
+            />
+            <button className="ar-btn" onClick={() => galleryRef.current.click()}>
+              Subir la foto del AR desde la galería
+            </button>
+          </>
         )}
         <div className="faces" role="group" aria-label="Cara de Watt">
           {FACES.map((f) => (

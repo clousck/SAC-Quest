@@ -21,12 +21,12 @@ const t = now()
 const TEAMS = ['Rama ESPOL', 'Rama EPN', 'Rama UCuenca', 'Rama ESPE', 'Rama PUCE', 'Rama UTPL', 'Rama USFQ', 'Rama UPS']
 
 const CHALLENGES = [
-  { type: 'PHOTO', icon: '🤝', title: 'Conoce una nueva Rama', description: 'Encuentra a alguien de una Rama diferente a la tuya y tómense una foto juntos.', points: 20, category: 'Networking', difficulty: 'easy' },
-  { type: 'AR', icon: '🐱', title: 'Encuentra a Watt', description: 'Abre la cámara, coloca a Watt y tómate una foto con él.', points: 15, category: 'Watt', difficulty: 'easy' },
-  { type: 'QR', icon: '📍', title: 'Checkpoint: Registro', description: 'Busca el código QR en la mesa de registro y escanéalo.', points: 10, category: 'Exploración', difficulty: 'easy', requiresApproval: false },
-  { type: 'PHOTO', icon: '🎤', title: 'Selfie con un ponente', description: 'Tómate una foto con alguno de los ponentes del evento.', points: 30, category: 'Networking', difficulty: 'medium' },
-  { type: 'PHOTO', icon: '🧑‍🤝‍🧑', title: 'Foto grupal de tu Rama', description: 'Reúne al menos a 5 personas de tu Rama para una foto.', points: 25, category: 'Equipo', difficulty: 'medium', maxCompletions: 40 },
-  { type: 'QR', icon: '🔒', title: 'Checkpoint secreto', description: 'Hay un QR escondido en el lugar. ¿Lo encontrarás?', points: 40, category: 'Exploración', difficulty: 'hard', visibility: 'secret', requiresApproval: false },
+  { type: 'PHOTO', icon: '🤝', title: 'Conoce una nueva Rama', description: 'Encuentra a alguien de una Rama diferente a la tuya y tómense una foto juntos.', points: 20, category: 'Networking' },
+  { type: 'AR', icon: '🐱', title: 'Encuentra a Watt', description: 'Abre la cámara, coloca a Watt y tómate una foto con él.', points: 15, category: 'Watt' },
+  { type: 'QR', icon: '📍', title: 'Checkpoint: Registro', description: 'Busca el código QR en la mesa de registro y escanéalo.', points: 10, category: 'Exploración', requiresApproval: false },
+  { type: 'PHOTO', icon: '🎤', title: 'Selfie con un ponente', description: 'Tómate una foto con alguno de los ponentes del evento.', points: 30, category: 'Networking' },
+  { type: 'PHOTO', icon: '🧑‍🤝‍🧑', title: 'Foto grupal de tu Rama', description: 'Reúne al menos a 5 personas de tu Rama para una foto.', points: 25, category: 'Equipo', maxCompletions: 40 },
+  { type: 'QR', icon: '🔒', title: 'Checkpoint secreto', description: 'Hay un QR escondido en el lugar. ¿Lo encontrarás?', points: 40, category: 'Exploración', visibility: 'secret', requiresApproval: false },
 ]
 
 db.tx(() => {
@@ -45,9 +45,9 @@ db.tx(() => {
     ids.push(
       Number(
         db.run(
-          `INSERT INTO challenges (event_id, type, title, description, icon, points, category, difficulty, status,
+          `INSERT INTO challenges (event_id, type, title, description, icon, points, category, status,
               visibility, max_completions, requires_approval, requires_photo, qr_code, sort_order, created_at, updated_at)
-           VALUES (:eventId, :type, :title, :description, :icon, :points, :category, :difficulty, 'active',
+           VALUES (:eventId, :type, :title, :description, :icon, :points, :category, 'active',
               :visibility, :maxCompletions, :requiresApproval, :requiresPhoto, :qrCode, :i, :t, :t)`,
           {
             eventId,
@@ -65,10 +65,10 @@ db.tx(() => {
   })
   // Un reto que se desbloquea al completar el primero.
   db.run(
-    `INSERT INTO challenges (event_id, type, title, description, icon, points, category, difficulty, status,
+    `INSERT INTO challenges (event_id, type, title, description, icon, points, category, status,
         unlock_rule, requires_approval, requires_photo, sort_order, created_at, updated_at)
      VALUES (:eventId, 'PHOTO', 'Tres Ramas, una foto', 'Ahora reúne a personas de tres Ramas distintas en una sola foto.',
-        '🌐', 40, 'Networking', 'hard', 'active', :rule, 1, 1, 99, :t, :t)`,
+        '🌐', 40, 'Networking', 'active', :rule, 1, 1, 99, :t, :t)`,
     { eventId, rule: JSON.stringify({ afterChallenges: [ids[0]] }), t },
   )
   DEFAULT_BADGES.forEach((b, i) =>
