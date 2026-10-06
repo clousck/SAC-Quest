@@ -13,6 +13,9 @@ teléfono, sin instalar nada:
 - **Gamificación liviana**: XP, niveles, logros y ranking individual. El XP de
   una Rama suma el de sus 5 mejores (ponderado), un bono por participación y los
   retos de Rama; los inscritos que no juegan no suman.
+- **Capturar**: el botón central de la app abre la cámara para escanear
+  cualquier QR del evento sin salir de la página; la pantalla de entrada y los
+  retos con código tienen el mismo escáner junto al campo.
 - **Avisos** de los organizadores a todos los participantes, e icono para la
   pantalla de inicio del teléfono.
 - **Galería privada** del evento (solo fotos aprobadas, solo participantes),
@@ -20,7 +23,8 @@ teléfono, sin instalar nada:
 - **Panel** (`/admin`): crear y editar retos sin tocar código, moderar fotos
   (también desde el teléfono), participantes, ranking con pantalla grande,
   estadísticas, descarga de fotos en ZIP, imprimir QRs, abrir y cerrar el
-  evento, duplicar un evento para el siguiente.
+  evento (a mano o solo, con hora de inicio y de fin), duplicar un evento para
+  el siguiente. Cada moderador ve solo los eventos que tiene asignados.
 - **Multi-evento**: ningún evento está en el código; cada uno se crea en el panel.
 
 ## Instalación
@@ -103,6 +107,7 @@ En desarrollo no hace falta ningún `.env`: se usan valores de prueba.
 ```bash
 cd server && npm test                                     # pruebas de la API
 cd server && npm run loadtest -- --code <código> --users 150
+cd server && npm run diagnose -- <evento> ["<nombre>"]    # estado de un evento (solo lee)
 ```
 
 En cada push, GitHub corre solo las pruebas y la compilación

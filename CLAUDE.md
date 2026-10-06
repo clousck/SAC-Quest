@@ -160,25 +160,21 @@ sin ventana) y subir los dos.
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
 
-## Estado (2026-10-05)
-- En producción en la Pi. Implementado: API, app del participante, panel, cola offline, backups,
-  loadtest, XP de Rama, valores de reto, encuestas, avisos, `git deploy`, CI.
+## Estado (2026-10-05, fin del día)
+- En producción en la Pi y al día con `main` (`git deploy` funciona desde este PC; el paso manual
+  del cambio de nombre del proyecto de Docker ya estaba hecho). El remoto de GitHub se movió a
+  `git@github.com:clousck/SAC-Quest.git`: el push funciona por redirección, falta `git remote set-url`.
+- Hecho el 2026-10-05: botón Capturar y escáner de QR, `/` como entrada, requisitos borrados que
+  bloqueaban retos, `npm run diagnose`, puntos fijos al moderar, guion del código de recuperación,
+  booth sin cuenta regresiva, giro de Watt en AR, «Código nuevo», icono de IEEE, máximos de XP por
+  Rama en Ajustes, PDF de reglas, moderadores por evento, inicio y fin programados.
 - Probado por el usuario en iPhone y Android (funcionalidad); él mismo dice que faltan más pruebas.
-  Sin probar: Quick Look dentro de un reto (cambio del 2026-10-05), el conjunto con varias personas
-  (ver `docs/ensayo.md`) y el **escáner de «Capturar» en teléfonos reales** (2026-10-05: solo
-  verificado en Edge headless con un QR simulado, ruta jsQR).
-- **Lo primero a confirmar con el usuario**: si ya hizo en la Pi el paso manual del cambio de
-  nombre del proyecto de Docker (copiar el volumen viejo a `sac-quest_sac-data`; los comandos
-  están en la conversación del 2026-10-05 y se resumen abajo). Hasta entonces producción sigue en
-  una versión anterior y **`git deploy` fallaría** (el puerto 8787 lo ocupa el proyecto viejo):
-      docker compose exec -T app npm run backup -- /backups && docker compose --profile tunnel down
-      git pull && sed -i 's/^[A-Z]*_\(DATA_DIR\|BACKUP_DIR\|BIND\)=/SAC_\1=/' .env
-      docker volume create sac-quest_sac-data
-      docker run --rm -v <volumen-viejo>:/from -v sac-quest_sac-data:/to busybox cp -a /from/. /to/
-      docker compose up -d --build
-  (`docker volume ls` muestra el volumen viejo). Sin probar en Docker.
-- Después de eso, en el panel: asignar un valor a cada reto existente (aparecen como «Actual ·
-  N XP») y revisar el reto de Rama «Cinco con Watt» (pide 3 integrantes y el texto dice 5).
+  **Sin probar en teléfonos reales** lo de hoy: escáner (Capturar, entrada, retos), giro de Watt en
+  AR, iconos en la pantalla de inicio. Sin abrir en navegador: tarjeta «Moderadores de este evento»
+  y avisos de inicio/fin en Ajustes (compilan y la API está probada). Tampoco Quick Look dentro de
+  un reto ni el conjunto con varias personas (`docs/ensayo.md`).
+- Producción tiene dos eventos de prueba del usuario (`tallerdirectivosxv` y otro). Sus retos de
+  Rama piden 5 integrantes y casi todas las Ramas tienen 1 inscrito: es esperado que no se cumplan.
 - **Pendiente**: ensayo con 10 personas; backup fuera de la microSD (el usuario lo pospuso).
 - **Descartado por el usuario**: repartir la cola de moderación (cada moderador filtra por su
   reto) y puntos otorgados por el staff para torneos.

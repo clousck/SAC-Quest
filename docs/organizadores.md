@@ -1,7 +1,8 @@
 # Guía para organizadores y moderadores
 
 Cómo usar el panel de SAC Quest: `https://sacquest.penginexr.com/admin`.
-Hay dos roles: **admin** (todo) y **moderador** (revisar fotos, gestionar
+Hay dos roles: **admin** (todo, en todos los eventos) y **moderador** (solo en
+los eventos que tiene asignados: revisar fotos, gestionar
 participantes, ver rankings y resultados, descargar).
 
 ## Antes del evento (admin)
