@@ -1,19 +1,17 @@
 // Roles del panel y lo que ve cada uno. El servidor decide de verdad (ACCESS
 // en server/src/routes/admin.js): esto solo evita mostrar lo que daria error.
-export const ROLE_LABEL = { admin: 'Admin', moderator: 'Moderador', reviewer: 'Revisor', editor: 'Editor' }
+export const ROLE_LABEL = { admin: 'Admin', moderator: 'Moderador', reviewer: 'Revisor' }
 
 export const ROLE_HELP = {
   admin: 'todo, en todos los eventos.',
-  moderator: 'revisa y borra fotos, gestiona participantes, ve estadísticas y descarga fotos.',
+  moderator: 'crea y edita retos, revisa y borra fotos, gestiona participantes, ve estadísticas y descarga fotos.',
   reviewer: 'solo aprueba y rechaza las fotos de los retos.',
-  editor: 'crea y edita retos y gestiona participantes.',
 }
 
 const CAPS = {
   admin: ['review', 'deleteSubmissions', 'participants', 'challenges', 'view', 'settings'],
-  moderator: ['review', 'deleteSubmissions', 'participants', 'view', 'settings'],
+  moderator: ['review', 'deleteSubmissions', 'participants', 'challenges', 'view', 'settings'],
   reviewer: ['review'],
-  editor: ['challenges', 'participants'],
 }
 
 /**

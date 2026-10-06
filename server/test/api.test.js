@@ -432,7 +432,6 @@ describe('flujo completo', () => {
       ],
     }
     const body = { type: 'TRIVIA', title: 'Encuesta de la charla', points: 30, status: 'active', requiresApproval: true, config: { survey } }
-    assert.equal((await call('POST', `/admin/events/${eventId}/challenges`, { token: mod, body })).status, 403)
     const empty = await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body: { ...body, config: { survey: { questions: [] } } } })
     assert.equal(empty.status, 400)
     const ch = (await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body })).data.challenge
@@ -595,55 +594,47 @@ describe('flujo completo', () => {
     await call('DELETE', `/admin/events/${otherId}`, { token: admin, body: { confirm: made.data.event.slug } })
   })
 
-  test('roles revisor y editor: cada uno solo lo suyo', async () => {
+  test('roles: el revisor solo aprueba y rechaza; el moderador tambien crea y edita retos', async () => {
     const ev = `/admin/events/${eventId}`
-    const mkUser = async (username, role) => {
-      const made = await call('POST', '/admin/users', { token: admin, body: { username, name: username, password: 'password123', role } })
-      assert.equal(made.data.user.role, role)
-      return made.data.user.id
-    }
-    const rev = await mkUser('revisora', 'reviewer')
-    const edi = await mkUser('editor1', 'editor')
-    const login = async (username) => (await call('POST', '/admin/login', { body: { username, password: 'password123' } })).data
-    assert.equal((await login('revisora')).admin.role, 'reviewer')
-    const reviewer = (await login('revisora')).token
-    const editor = (await login('editor1')).token
+    const made0 = await call('POST', '/admin/users', { token: admin, body: { username: 'revisora', name: 'Revisora', password: 'password123', role: 'reviewer' } })
+    assert.equal(made0.data.user.role, 'reviewer')
+    const rev = made0.data.user.id
+    // El rol editor ya no existe.
+    assert.equal((await call('POST', '/admin/users', { token: admin, body: { username: 'editor1', name: 'Editor', password: 'password123', role: 'editor' } })).status, 400)
+    const session = (await call('POST', '/admin/login', { body: { username: 'revisora', password: 'password123' } })).data
+    assert.equal(session.admin.role, 'reviewer')
+    const reviewer = session.token
     const st = async (method, path, token, body) => (await call(method, path, { token, body })).status
 
-    // Sin asignar al evento no entran, igual que un moderador.
+    // Sin asignar al evento no entra, igual que un moderador.
     assert.equal(await st('GET', ev, reviewer), 404)
     const team = (await call('GET', `${ev}/moderators`, { token: admin })).data.moderators
-    assert.deepEqual(team.map((m) => m.role).sort(), ['editor', 'moderator', 'reviewer'])
+    assert.deepEqual(team.map((m) => m.role).sort(), ['moderator', 'reviewer'])
     await call('POST', `${ev}/moderators`, { token: admin, body: { adminIds: team.map((m) => m.id) } })
-
-    const pending = (await call('GET', `${ev}/submissions?status=approved`, { token: reviewer })).data.items[0]
-    const person = (await call('GET', `${ev}/participants`, { token: editor })).data.participants[0]
+    const sub = (await call('GET', `${ev}/submissions?status=approved`, { token: reviewer })).data.items[0]
 
     // Revisor: ve la cola y decide; nada mas.
     assert.equal(await st('GET', `${ev}/challenges`, reviewer), 200)
-    assert.equal(await st('POST', `/admin/submissions/${pending.id}/review`, reviewer, { decision: 'approve' }), 200)
-    assert.equal(await st('DELETE', `/admin/submissions/${pending.id}`, reviewer), 403)
+    assert.equal(await st('POST', `/admin/submissions/${sub.id}/review`, reviewer, { decision: 'approve' }), 200)
+    assert.equal(await st('DELETE', `/admin/submissions/${sub.id}`, reviewer), 403)
     assert.equal(await st('GET', `${ev}/participants`, reviewer), 403)
     assert.equal(await st('GET', `${ev}/stats`, reviewer), 403)
     assert.equal(await st('POST', `${ev}/challenges`, reviewer, { type: 'QR', title: 'No debe' }), 403)
     assert.equal(await st('POST', `${ev}/export`, reviewer, {}), 403)
 
-    // Editor: crea y edita retos y gestiona participantes; no modera ni borra retos ni toca ajustes.
-    const made = await call('POST', `${ev}/challenges`, { token: editor, body: { type: 'QR', title: 'Reto del editor' } })
+    // Moderador: ademas de moderar, crea y edita retos; no los borra ni toca ajustes ni usuarios.
+    const made = await call('POST', `${ev}/challenges`, { token: mod, body: { type: 'QR', title: 'Reto del moderador' } })
     assert.equal(made.status, 201)
-    assert.equal(await st('PATCH', `/admin/challenges/${made.data.challenge.id}`, editor, { title: 'Reto editado' }), 200)
-    assert.equal(await st('PATCH', `/admin/participants/${person.id}`, editor, { alias: person.alias }), 200)
-    assert.equal(await st('DELETE', `/admin/challenges/${made.data.challenge.id}`, editor), 403)
-    assert.equal(await st('GET', `${ev}/submissions`, editor), 403)
-    assert.equal(await st('POST', `/admin/submissions/${pending.id}/review`, editor, { decision: 'reject' }), 403)
-    assert.equal(await st('PATCH', ev, editor, { name: 'Otro nombre' }), 403)
-    assert.equal(await st('GET', '/admin/users', editor), 403)
+    assert.equal(await st('PATCH', `/admin/challenges/${made.data.challenge.id}`, mod, { title: 'Reto editado' }), 200)
+    assert.equal(await st('POST', `/admin/challenges/${made.data.challenge.id}/regenerate-qr`, mod), 200)
+    assert.equal(await st('DELETE', `/admin/challenges/${made.data.challenge.id}`, mod), 403)
+    assert.equal(await st('PATCH', ev, mod, { name: 'Otro nombre' }), 403)
+    assert.equal(await st('GET', '/admin/users', mod), 403)
 
     // Cambiar el rol desde Usuarios y dejar todo como estaba.
-    const back = await call('PATCH', `/admin/users/${rev}`, { token: admin, body: { role: 'moderator' } })
-    assert.equal(back.data.user.role, 'moderator')
+    assert.equal((await call('PATCH', `/admin/users/${rev}`, { token: admin, body: { role: 'moderator' } })).data.user.role, 'moderator')
     await call('DELETE', `/admin/challenges/${made.data.challenge.id}`, { token: admin })
-    for (const id of [rev, edi]) await call('PATCH', `/admin/users/${id}`, { token: admin, body: { active: false } })
+    await call('PATCH', `/admin/users/${rev}`, { token: admin, body: { active: false } })
     const mods = (await call('GET', `${ev}/moderators`, { token: admin })).data.moderators
     await call('POST', `${ev}/moderators`, { token: admin, body: { adminIds: mods.filter((m) => m.username === 'mod').map((m) => m.id) } })
   })

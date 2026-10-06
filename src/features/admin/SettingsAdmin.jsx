@@ -152,7 +152,7 @@ function AccessCard() {
   )
 }
 
-/** Que cuentas (moderadores, revisores, editores) entran a este evento. Los administradores ven todos. */
+/** Que cuentas (moderadores y revisores) entran a este evento. Los administradores ven todos. */
 function ModeratorsCard() {
   const { event } = useEventAdmin()
   const { data, error, setData } = useAsync(() => listModerators(event.id), [event.id])
@@ -173,7 +173,7 @@ function ModeratorsCard() {
     <div className="card form">
       <h3>Equipo de este evento</h3>
       <p className="muted small">
-        Moderadores, revisores y editores solo entran a los eventos donde están marcados; cada uno hace lo que permite su rol. Los
+        Moderadores y revisores solo entran a los eventos donde están marcados; cada uno hace lo que permite su rol. Los
         administradores ven todos. Las cuentas y sus roles se manejan en <Link to="/admin/usuarios">Usuarios</Link>.
       </p>
       <div className="check-list">

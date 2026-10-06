@@ -216,6 +216,11 @@ const MIGRATIONS = [
   `
   ALTER TABLE admins ADD COLUMN staff_role TEXT;
   `,
+  // El rol editor duro un dia: se unio al de moderador, que ahora tambien
+  // crea y edita retos. Las cuentas que lo tenian pasan a moderador.
+  `
+  UPDATE admins SET staff_role = NULL WHERE staff_role = 'editor';
+  `,
 ]
 
 function migrate(db) {

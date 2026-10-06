@@ -57,7 +57,7 @@ export const DEFAULT_BADGES = [
 
 // Roles del panel. `admin` puede todo y ve todos los eventos; los demas solo
 // los eventos donde estan asignados y solo lo que diga ACCESS.
-const STAFF_ROLES = ['moderator', 'reviewer', 'editor']
+const STAFF_ROLES = ['moderator', 'reviewer']
 const ROLES = ['admin', ...STAFF_ROLES]
 
 /** Rol efectivo de una fila de `admins` (ver la migracion de staff_role). */
@@ -67,9 +67,9 @@ const roleOf = (row) => (row.role === 'admin' ? 'admin' : STAFF_ROLES.includes(r
  * Lo que puede hacer cada rol que no es admin: [metodo, ruta, roles]. Una
  * peticion que no aparece aca es solo para administradores. Es el unico lugar
  * donde se decide; los requireAdmin de cada ruta quedan como segunda barrera.
- *  - moderator: moderar, borrar envios, participantes, ver y descargar.
+ *  - moderator: moderar, borrar envios, participantes, ver y descargar, y
+ *               crear y editar retos (borrarlos no: se lleva fotos y puntos).
  *  - reviewer:  solo la cola de fotos: aprobar y rechazar.
- *  - editor:    crear y editar retos (no borrarlos) y gestionar participantes.
  */
 const ACCESS = [
   ['GET', /^\/(me|events)$/, STAFF_ROLES],
@@ -83,19 +83,19 @@ const ACCESS = [
   ['POST', /^\/submissions\/\d+\/review$/, ['moderator', 'reviewer']],
   ['DELETE', /^\/submissions\/\d+$/, ['moderator']],
   // Participantes.
-  ['GET', /^\/events\/\d+\/participants$/, ['moderator', 'editor']],
-  ['PATCH', /^\/participants\/\d+$/, ['moderator', 'editor']],
-  ['POST', /^\/participants\/\d+\/recovery-code$/, ['moderator', 'editor']],
+  ['GET', /^\/events\/\d+\/participants$/, ['moderator']],
+  ['PATCH', /^\/participants\/\d+$/, ['moderator']],
+  ['POST', /^\/participants\/\d+\/recovery-code$/, ['moderator']],
   // Ver y descargar.
   ['GET', /^\/events\/\d+\/(ranking|stats|announcements)$/, ['moderator']],
   ['POST', /^\/events\/\d+\/(announcements|export)$/, ['moderator']],
   ['DELETE', /^\/announcements\/\d+$/, ['moderator']],
-  ['GET', /^\/challenges\/\d+\/survey-results$/, ['moderator', 'editor']],
+  ['GET', /^\/challenges\/\d+\/survey-results$/, ['moderator']],
   // Retos.
-  ['POST', /^\/events\/\d+\/challenges(\/reorder)?$/, ['editor']],
-  ['PATCH', /^\/challenges\/\d+$/, ['editor']],
-  ['POST', /^\/challenges\/\d+\/(regenerate-qr|image)$/, ['editor']],
-  ['DELETE', /^\/challenges\/\d+\/image$/, ['editor']],
+  ['POST', /^\/events\/\d+\/challenges(\/reorder)?$/, ['moderator']],
+  ['PATCH', /^\/challenges\/\d+$/, ['moderator']],
+  ['POST', /^\/challenges\/\d+\/(regenerate-qr|image)$/, ['moderator']],
+  ['DELETE', /^\/challenges\/\d+\/image$/, ['moderator']],
 ]
 
 const BADGE_RULES = ['count', 'xp', 'category', 'challengeType', 'challenge', 'allOfType']

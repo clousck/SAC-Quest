@@ -5,7 +5,7 @@ import { ErrorBox, Spinner } from '../quest/ui'
 import { useAdmin } from './AdminContext'
 import { ROLE_HELP, ROLE_LABEL } from './roles'
 
-const ROLE_OPTIONS = ['moderator', 'reviewer', 'editor', 'admin']
+const ROLE_OPTIONS = ['moderator', 'reviewer', 'admin']
 
 /**
  * Cuentas del panel. Que puede cada rol: roles.js (y ACCESS en el servidor).
@@ -46,7 +46,7 @@ export default function UsersAdmin() {
     <section className="admin-page narrow">
       <h1>Usuarios del panel</h1>
       <ul className="muted small role-help">
-        {['admin', ...ROLE_OPTIONS.slice(0, 3)].map((r) => (
+        {['admin', 'moderator', 'reviewer'].map((r) => (
           <li key={r}>
             <strong>{ROLE_LABEL[r]}</strong>: {ROLE_HELP[r]}
           </li>
