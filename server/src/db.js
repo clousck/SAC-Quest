@@ -200,6 +200,15 @@ const MIGRATIONS = [
   INSERT INTO event_moderators (event_id, admin_id)
     SELECT e.id, a.id FROM events e, admins a WHERE a.role = 'moderator';
   `,
+  // Apertura y cierre programados (ver schedule.js): cada fecha se dispara una
+  // sola vez. Las fechas que ya pasaron se dan por disparadas, para que esta
+  // migracion no abra ni cierre ningun evento existente.
+  `
+  ALTER TABLE events ADD COLUMN start_fired_at TEXT;
+  ALTER TABLE events ADD COLUMN end_fired_at TEXT;
+  UPDATE events SET start_fired_at = starts_at WHERE starts_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now');
+  UPDATE events SET end_fired_at = ends_at WHERE ends_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now');
+  `,
 ]
 
 function migrate(db) {

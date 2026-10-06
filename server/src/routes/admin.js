@@ -383,12 +383,22 @@ export function adminRoutes(svc) {
     // Cada formulario manda solo su parte de los ajustes: el resto se conserva.
     if (data.settings) data.settings = { ...ev.settings, ...data.settings }
     if (body.regenerateJoinCode) data.joinCode = uniqueCode('events', 'join_code', 6)
+    const startsAt = data.startsAt !== undefined ? data.startsAt : ev.startsAt
+    const endsAt = data.endsAt !== undefined ? data.endsAt : ev.endsAt
+    if (startsAt && endsAt && endsAt <= startsAt) throw badRequest('El fin debe ser posterior al inicio.')
+    // Una fecha nueva en el futuro vuelve a armar su disparo (ver schedule.js);
+    // una ya pasada no abre ni cierra nada.
+    const t = now()
+    if (data.startsAt !== undefined && data.startsAt !== ev.startsAt) data.startFiredAt = data.startsAt > t ? null : t
+    if (data.endsAt !== undefined && data.endsAt !== ev.endsAt) data.endFiredAt = data.endsAt > t ? null : t
     update('events', ev.id, data, {
       name: ['name'],
       description: ['description'],
       status: ['status'],
       startsAt: ['starts_at'],
       endsAt: ['ends_at'],
+      startFiredAt: ['start_fired_at'],
+      endFiredAt: ['end_fired_at'],
       levels: ['levels', json],
       settings: ['settings', json],
       joinCode: ['join_code'],

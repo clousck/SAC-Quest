@@ -595,6 +595,38 @@ describe('flujo completo', () => {
     await call('DELETE', `/admin/events/${otherId}`, { token: admin, body: { confirm: made.data.event.slug } })
   })
 
+  test('inicio y fin programados: el evento se abre y se cierra solo, una vez', async () => {
+    const wait = (ms) => new Promise((r) => setTimeout(r, ms))
+    const soon = (ms) => new Date(Date.now() + ms).toISOString()
+    const made = await call('POST', '/admin/events', { token: admin, body: { name: 'Evento con horario' } })
+    const id = made.data.event.id
+    const status = async () => (await call('GET', `/admin/events/${id}`, { token: admin })).data.event.status
+    const patch = (body) => call('PATCH', `/admin/events/${id}`, { token: admin, body })
+
+    assert.equal((await patch({ startsAt: soon(5000), endsAt: soon(1000) })).status, 400, 'el fin va despues del inicio')
+    // Una fecha ya pasada no abre nada.
+    await patch({ startsAt: soon(-60_000) })
+    assert.equal(await status(), 'draft')
+
+    await patch({ startsAt: soon(150), endsAt: soon(450) })
+    assert.equal(await status(), 'draft')
+    await wait(200)
+    assert.equal(await status(), 'open', 'se abre solo al llegar el inicio')
+    await wait(300)
+    assert.equal(await status(), 'closed', 'se cierra solo al llegar el fin')
+    assert.equal((await call('POST', '/events/evento-con-horario/join', { body: { alias: 'Tarde', consent: true, code: made.data.event.joinCode } })).status, 403)
+
+    // Lo manual gana: reabierto a mano, el fin no vuelve a cerrarlo.
+    await patch({ status: 'open' })
+    await wait(50)
+    assert.equal(await status(), 'open')
+    // Una fecha nueva en el futuro vuelve a armar el cierre.
+    await patch({ endsAt: soon(150) })
+    await wait(200)
+    assert.equal(await status(), 'closed')
+    await call('DELETE', `/admin/events/${id}`, { token: admin, body: { confirm: made.data.event.slug } })
+  })
+
   test('un requisito borrado o desactivado no deja el reto bloqueado', async () => {
     const slug = '/events/sac-quest-2027'
     const mk = async (body) => (await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body: { status: 'active', type: 'QR', ...body } })).data.challenge

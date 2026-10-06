@@ -21,7 +21,7 @@ import {
   updateTeamGoal,
 } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
-import { ErrorBox } from '../quest/ui'
+import { ErrorBox, formatWhen } from '../quest/ui'
 import { useAdmin, useEventAdmin } from './AdminContext'
 import QrImage, { appHost, eventJoinUrl, fromLocalInput, hasPublicOrigin, toLocalInput } from './QrImage'
 
@@ -66,6 +66,8 @@ function useSaver() {
   return { save, error, saved }
 }
 
+const isFuture = (iso) => !!iso && new Date(iso) > new Date()
+
 function StatusCard() {
   const { event } = useEventAdmin()
   const { isAdmin } = useAdmin()
@@ -78,6 +80,8 @@ function StatusCard() {
       {event.status === 'draft' && <p>📝 En borrador: los participantes aún no pueden entrar. Prepara retos y Ramas, y ábrelo el día del evento.</p>}
       {event.status === 'open' && <p>🟢 Abierto: se puede entrar y completar retos.</p>}
       {event.status === 'closed' && <p>🏁 Cerrado: no se aceptan nuevos participantes ni envíos. El ranking queda congelado y la galería sigue visible.</p>}
+      {event.status === 'draft' && isFuture(event.startsAt) && <p className="notice">⏰ Se abrirá solo el {formatWhen(event.startsAt)}.</p>}
+      {event.status === 'open' && isFuture(event.endsAt) && <p className="notice">⏰ Se cerrará solo el {formatWhen(event.endsAt)}.</p>}
       {isAdmin && (
         <div className="row">
           {event.status !== 'open' && (
@@ -228,11 +232,11 @@ function EventCard() {
         </label>
         <div className="form-grid">
           <label>
-            Inicio
+            Inicio (se abre solo)
             <input type="datetime-local" value={f.startsAt} onChange={set('startsAt')} />
           </label>
           <label>
-            Fin
+            Fin (se cierra solo)
             <input type="datetime-local" value={f.endsAt} onChange={set('endsAt')} />
           </label>
           <label>
@@ -244,6 +248,10 @@ function EventCard() {
             <input type="color" value={f.accent} onChange={set('accent')} />
           </label>
         </div>
+        <p className="muted small">
+          A la hora de inicio, un evento en borrador se abre; a la hora de fin, uno abierto se cierra y ya no recibe envíos. Cada
+          fecha actúa una sola vez: después puedes abrir, cerrar o reabrir a mano. Sin fechas, todo es manual.
+        </p>
         <label className="check">
           <input type="checkbox" checked={f.likes} onChange={set('likes')} />
           <span>Permitir likes en la galería</span>

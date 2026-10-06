@@ -44,7 +44,11 @@ participantes, ver rankings y resultados, descargar).
 
 ## Durante el evento
 
-- **Ajustes → Abrir evento** al empezar.
+- **Ajustes → Abrir evento** al empezar. O dejarlo programado: con **Inicio** y
+  **Fin** en Ajustes → Datos del evento, el evento se abre solo a la hora de
+  inicio y se cierra solo a la hora de fin (desde ese momento no recibe más
+  envíos). Cada fecha actúa una sola vez: si hace falta extender, «Reabrir
+  evento» lo deja abierto hasta cerrarlo a mano o poner un fin nuevo.
 - **Moderar**: aparece una foto a la vez. Aprobar suma los puntos del reto (no
   se pueden cambiar al moderar); rechazar pide
   un motivo y la persona puede volver a intentarlo. Funciona bien desde el

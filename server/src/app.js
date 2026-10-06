@@ -7,6 +7,7 @@ import { cors } from 'hono/cors'
 import { verifySignature } from './auth.js'
 import { adminRoutes } from './routes/admin.js'
 import { participantRoutes } from './routes/participant.js'
+import { applySchedule } from './schedule.js'
 import { createServices } from './services.js'
 import { HttpError, forbidden, notFound } from './util.js'
 
@@ -36,6 +37,12 @@ export function createApp({ db, storage, config }) {
       maxAge: 86400,
     }),
   )
+
+  // Eventos con inicio o fin programado: se abren y cierran solos.
+  api.use('*', async (c, next) => {
+    applySchedule(db)
+    await next()
+  })
 
   api.get('/health', (c) => {
     db.get('SELECT 1')

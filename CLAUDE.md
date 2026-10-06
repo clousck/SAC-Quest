@@ -89,6 +89,11 @@ sin ventana) y subir los dos.
 - Subidas idempotentes por `clientId`; si no hay red quedan en IndexedDB (`uploadQueue.js`).
 - "Reto secreto" es una **visibilidad**, no un tipo. Tipos implementados: PHOTO, AR, QR,
   TRIVIA (el esquema ya admite TEXT).
+- **Inicio y fin del evento** (`schedule.js`): al llegar el inicio un borrador se abre y al llegar
+  el fin un evento abierto se cierra. Cada fecha se dispara **una sola vez** (`start_fired_at`,
+  `end_fired_at`): lo manual posterior se respeta; cambiar la fecha a una futura la rearma, una
+  fecha pasada no hace nada. Se aplica antes de cada petición a la API (sin temporizador). Así lo
+  eligió el usuario frente a un estado derivado de las fechas.
 - Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar). Un
   moderador **solo ve los eventos donde está asignado** (tabla `event_moderators`, se marca en
   Ajustes del evento). Se comprueba en un solo lugar: el middleware de sesión de `admin.js` saca el
@@ -150,7 +155,7 @@ sin ventana) y subir los dos.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 29 pruebas
+    cd server && npm test             # 30 pruebas
     cd server && npm run diagnose -- <slug>   # estado de un evento (retos, Ramas, ranking, envíos) (API completa + config)
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
