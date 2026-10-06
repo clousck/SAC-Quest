@@ -84,6 +84,9 @@ describe('flujo completo', () => {
     assert.match(data.event.joinCode, /^[A-Z2-9]{6}$/)
     eventId = data.event.id
     joinCode = data.event.joinCode
+    // Un evento nuevo no tiene moderadores: se asigna el de las pruebas.
+    const mods = (await call('GET', `/admin/events/${eventId}/moderators`, { token: admin })).data.moderators
+    await call('POST', `/admin/events/${eventId}/moderators`, { token: admin, body: { adminIds: mods.map((m) => m.id) } })
 
     const badges = await call('GET', `/admin/events/${eventId}/badges`, { token: admin })
     assert.equal(badges.data.badges.length, 4, 'se crean los badges por defecto')
@@ -562,6 +565,34 @@ describe('flujo completo', () => {
     assert.deepEqual(got.data.announcements.map((n) => n.text), ['La charla 2 empieza en 5 minutos'])
     await call('DELETE', `/admin/announcements/${sent.data.announcements[0].id}`, { token: mod })
     assert.deepEqual((await call('GET', `${slug}/challenges`, { token: ana })).data.announcements, [])
+  })
+
+  test('un moderador solo ve los eventos que tiene asignados', async () => {
+    const made = await call('POST', '/admin/events', { token: admin, body: { name: 'Evento test' } })
+    const otherId = made.data.event.id
+    const ch = (await call('POST', `/admin/events/${otherId}/challenges`, { token: admin, body: { type: 'QR', title: 'Reto ajeno' } })).data.challenge
+    const ids = async (token) => (await call('GET', '/admin/events', { token })).data.events.map((e) => e.id)
+
+    // Un evento nuevo no tiene moderadores: el moderador no lo ve ni entra por ninguna ruta.
+    assert.ok((await ids(admin)).includes(otherId))
+    assert.ok(!(await ids(mod)).includes(otherId))
+    assert.equal((await call('GET', `/admin/events/${otherId}`, { token: mod })).status, 404)
+    assert.equal((await call('GET', `/admin/events/${otherId}/submissions`, { token: mod })).status, 404)
+    assert.equal((await call('GET', `/admin/challenges/${ch.id}`, { token: mod })).status, 404)
+    assert.equal((await call('GET', `/admin/events/${otherId}/moderators`, { token: mod })).status, 404)
+
+    const list = (await call('GET', `/admin/events/${otherId}/moderators`, { token: admin })).data.moderators
+    assert.deepEqual(list.map((m) => [m.username, m.assigned]), [['mod', false]])
+    const set = await call('POST', `/admin/events/${otherId}/moderators`, { token: admin, body: { adminIds: [list[0].id, 9999] } })
+    assert.deepEqual(set.data.moderators.map((m) => m.assigned), [true])
+    assert.ok((await ids(mod)).includes(otherId))
+    assert.equal((await call('GET', `/admin/challenges/${ch.id}`, { token: mod })).status, 200)
+    // Asignado sigue siendo moderador: no asigna a otros ni edita el evento.
+    assert.equal((await call('POST', `/admin/events/${otherId}/moderators`, { token: mod, body: { adminIds: [] } })).status, 403)
+
+    await call('POST', `/admin/events/${otherId}/moderators`, { token: admin, body: { adminIds: [] } })
+    assert.equal((await call('GET', `/admin/events/${otherId}`, { token: mod })).status, 404)
+    await call('DELETE', `/admin/events/${otherId}`, { token: admin, body: { confirm: made.data.event.slug } })
   })
 
   test('un requisito borrado o desactivado no deja el reto bloqueado', async () => {

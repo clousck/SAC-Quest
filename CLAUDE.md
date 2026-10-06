@@ -89,7 +89,11 @@ sin ventana) y subir los dos.
 - Subidas idempotentes por `clientId`; si no hay red quedan en IndexedDB (`uploadQueue.js`).
 - "Reto secreto" es una **visibilidad**, no un tipo. Tipos implementados: PHOTO, AR, QR,
   TRIVIA (el esquema ya admite TEXT).
-- Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar).
+- Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar). Un
+  moderador **solo ve los eventos donde está asignado** (tabla `event_moderators`, se marca en
+  Ajustes del evento). Se comprueba en un solo lugar: el middleware de sesión de `admin.js` saca el
+  evento de la ruta (`requestEventId`); una ruta nueva del panel con id propio debe agregarse a
+  `EVENT_TABLES` o quedaría abierta a cualquier moderador. Evento nuevo o duplicado = sin moderadores.
 - **Botón central «Capturar»** de la barra (`/e/:slug/capturar`, `CaptureScreen.jsx`): escáner de QR
   dentro de la app + lista de retos de foto disponibles. `qrScan.js` usa `BarcodeDetector` si existe
   y, si no (iPhone), **jsQR** en un chunk aparte. Un QR leído solo navega a `/e/:slug/q/:código`
@@ -146,7 +150,7 @@ sin ventana) y subir los dos.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 28 pruebas
+    cd server && npm test             # 29 pruebas
     cd server && npm run diagnose -- <slug>   # estado de un evento (retos, Ramas, ranking, envíos) (API completa + config)
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>

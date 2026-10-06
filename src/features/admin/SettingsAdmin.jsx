@@ -11,8 +11,10 @@ import {
   duplicateEvent,
   listBadges,
   listChallenges,
+  listModerators,
   listTeamGoals,
   listTeams,
+  setModerators,
   updateBadge,
   updateEvent,
   updateTeam,
@@ -30,6 +32,7 @@ export default function SettingsAdmin() {
       {!isAdmin && <p className="notice">Solo un administrador puede cambiar los ajustes.</p>}
       <StatusCard />
       <AccessCard />
+      {isAdmin && <ModeratorsCard />}
       <EventCard />
       <TeamsCard />
       <PointTiersCard />
@@ -140,6 +143,47 @@ function AccessCard() {
         )}
       </div>
       <ErrorBox error={error} />
+    </div>
+  )
+}
+
+/** Que moderadores ven y moderan este evento. Los administradores ven todos. */
+function ModeratorsCard() {
+  const { event } = useEventAdmin()
+  const { data, error, setData } = useAsync(() => listModerators(event.id), [event.id])
+  const [actionError, setActionError] = useState(null)
+  const list = data?.moderators ?? []
+
+  const toggle = async (id, on) => {
+    setActionError(null)
+    const ids = list.filter((m) => (m.id === id ? on : m.assigned)).map((m) => m.id)
+    try {
+      setData(await setModerators(event.id, ids))
+    } catch (e) {
+      setActionError(e)
+    }
+  }
+
+  return (
+    <div className="card form">
+      <h3>Moderadores de este evento</h3>
+      <p className="muted small">
+        Un moderador solo ve y modera los eventos donde está marcado. Los administradores ven todos. Las cuentas se crean en{' '}
+        <Link to="/admin/usuarios">Usuarios</Link>.
+      </p>
+      <div className="check-list">
+        {list.map((m) => (
+          <label key={m.id} className="check">
+            <input type="checkbox" checked={m.assigned} onChange={(e) => toggle(m.id, e.target.checked)} />
+            <span>
+              {m.name} <span className="muted small">@{m.username}</span>
+              {!m.active && <span className="muted small"> · cuenta desactivada</span>}
+            </span>
+          </label>
+        ))}
+      </div>
+      {data && !list.length && <p className="muted small">Todavía no hay cuentas de moderador.</p>}
+      <ErrorBox error={error || actionError} />
     </div>
   )
 }

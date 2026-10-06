@@ -38,6 +38,9 @@ participantes, ver rankings y resultados, descargar).
 6. **Retos → Imprimir QRs**: el de entrada va en carteles; cada checkpoint, en
    su lugar. El de cada encuesta se proyecta.
 7. **Usuarios** (arriba a la derecha): crear una cuenta por moderador.
+8. **Ajustes → Moderadores de este evento**: marcar quiénes moderan este evento.
+   Un moderador solo ve los eventos donde está marcado; los admin ven todos. Un
+   evento nuevo (o duplicado) empieza sin moderadores.
 
 ## Durante el evento
 

@@ -128,8 +128,37 @@ export function adminRoutes(svc) {
       )
     if (!admin) throw new HttpError(401, 'unauthenticated', 'Inicia sesión.')
     c.set('admin', admin)
+    // Un moderador solo entra a los eventos donde esta asignado. Para quien no
+    // lo esta, el evento (y todo lo suyo) no existe.
+    if (admin.role !== 'admin') {
+      const eventId = requestEventId(c.req.path)
+      if (eventId != null && !moderates(admin.id, eventId)) throw notFound('Evento no encontrado.')
+    }
     await next()
   })
+
+  // Tablas cuyas rutas van por id propio (/challenges/7) y no por evento.
+  const EVENT_TABLES = {
+    teams: 'teams',
+    challenges: 'challenges',
+    badges: 'badges',
+    announcements: 'announcements',
+    'team-goals': 'team_goals',
+    submissions: 'submissions',
+    participants: 'participants',
+  }
+
+  /** Evento al que apunta una peticion del panel, o null si no es de un evento. */
+  function requestEventId(path) {
+    const direct = /\/events\/(\d+)(?:\/|$)/.exec(path)
+    if (direct) return Number(direct[1])
+    const m = /\/(teams|challenges|badges|announcements|team-goals|submissions|participants)\/(\d+)(?:\/|$)/.exec(path)
+    if (!m) return null
+    return db.get(`SELECT event_id FROM ${EVENT_TABLES[m[1]]} WHERE id = :id`, { id: Number(m[2]) })?.event_id ?? null
+  }
+
+  const moderates = (adminId, eventId) =>
+    !!db.get('SELECT 1 FROM event_moderators WHERE admin_id = :adminId AND event_id = :eventId', { adminId, eventId })
 
   /** Crear/editar eventos, retos, equipos, badges y usuarios: solo rol admin. */
   const requireAdmin = (c) => {
@@ -206,8 +235,46 @@ export function adminRoutes(svc) {
   }
 
   r.get('/events', (c) => {
-    const events = db.all('SELECT * FROM events ORDER BY created_at DESC').map(toEvent).map(eventSummary)
-    return c.json({ events })
+    const me = c.get('admin')
+    const rows =
+      me.role === 'admin'
+        ? db.all('SELECT * FROM events ORDER BY created_at DESC')
+        : db.all(
+            `SELECT e.* FROM events e JOIN event_moderators m ON m.event_id = e.id
+              WHERE m.admin_id = :adminId ORDER BY e.created_at DESC`,
+            { adminId: me.id },
+          )
+    return c.json({ events: rows.map(toEvent).map(eventSummary) })
+  })
+
+  // Moderadores del evento: todas las cuentas de moderador, con cuales lo tienen asignado.
+  const listModerators = (eventId) =>
+    db
+      .all(
+        `SELECT a.id, a.username, a.name, a.active, m.event_id IS NOT NULL AS assigned
+           FROM admins a LEFT JOIN event_moderators m ON m.admin_id = a.id AND m.event_id = :eventId
+          WHERE a.role = 'moderator' ORDER BY a.name COLLATE NOCASE`,
+        { eventId },
+      )
+      .map((a) => ({ id: a.id, username: a.username, name: a.name, active: !!a.active, assigned: !!a.assigned }))
+
+  r.get('/events/:eventId/moderators', (c) => {
+    requireAdmin(c)
+    return c.json({ moderators: listModerators(eventParam(c).id) })
+  })
+
+  r.post('/events/:eventId/moderators', async (c) => {
+    requireAdmin(c)
+    const ev = eventParam(c)
+    const body = await jsonBody(c)
+    const ids = new Set((Array.isArray(body.adminIds) ? body.adminIds : []).map(Number))
+    db.tx(() => {
+      db.run('DELETE FROM event_moderators WHERE event_id = :eventId', { eventId: ev.id })
+      for (const a of db.all(`SELECT id FROM admins WHERE role = 'moderator'`)) {
+        if (ids.has(a.id)) db.run('INSERT INTO event_moderators (event_id, admin_id) VALUES (:eventId, :adminId)', { eventId: ev.id, adminId: a.id })
+      }
+    })
+    return c.json({ moderators: listModerators(ev.id) })
   })
 
   const eventFields = {

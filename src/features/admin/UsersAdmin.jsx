@@ -45,7 +45,8 @@ export default function UsersAdmin() {
       <h1>Usuarios del panel</h1>
       <p className="muted small">
         <strong>Admin</strong>: todo. <strong>Moderador</strong>: revisa fotos, gestiona participantes, ve estadísticas y
-        descarga fotos; no edita retos ni ajustes.
+        descarga fotos; no edita retos ni ajustes, y solo en los eventos donde se le asigna (Ajustes del evento → Moderadores de
+        este evento).
       </p>
       <ErrorBox error={error || actionError} retry={error ? reload : null} />
       {loading && !data && <Spinner />}

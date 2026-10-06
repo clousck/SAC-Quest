@@ -55,7 +55,11 @@ export default function EventsList() {
               </Link>
             </li>
           ))}
-          {!data.events.length && <p className="empty">Todavía no hay eventos.</p>}
+          {!data.events.length && (
+            <p className="empty">
+              {isAdmin ? 'Todavía no hay eventos.' : 'Todavía no tienes eventos asignados. Pídele a un administrador que te agregue.'}
+            </p>
+          )}
         </ul>
       )}
 

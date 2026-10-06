@@ -89,6 +89,8 @@ export const getRanking = (eventId) => call(`/events/${eventId}/ranking`)
 export const getStats = (eventId) => call(`/events/${eventId}/stats`)
 export const exportPhotos = (eventId, body) => post(`/events/${eventId}/export`, body)
 
+export const listModerators = (eventId) => call(`/events/${eventId}/moderators`)
+export const setModerators = (eventId, adminIds) => post(`/events/${eventId}/moderators`, { adminIds })
 export const listUsers = () => call('/users')
 export const createUser = (body) => post('/users', body)
 export const updateUser = (id, body) => patch(`/users/${id}`, body)

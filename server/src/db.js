@@ -188,6 +188,18 @@ const MIGRATIONS = [
    WHERE status = 'approved'
      AND (answer IS NULL OR json_extract(answer, '$.passed'));
   `,
+  // Moderadores por evento: un moderador solo ve los eventos donde esta
+  // asignado (los admin ven todos). Los que ya existian conservan el acceso a
+  // los eventos que ya habia.
+  `
+  CREATE TABLE event_moderators (
+    event_id  INTEGER NOT NULL REFERENCES events(id) ON DELETE CASCADE,
+    admin_id  INTEGER NOT NULL REFERENCES admins(id) ON DELETE CASCADE,
+    PRIMARY KEY (event_id, admin_id)
+  );
+  INSERT INTO event_moderators (event_id, admin_id)
+    SELECT e.id, a.id FROM events e, admins a WHERE a.role = 'moderator';
+  `,
 ]
 
 function migrate(db) {
