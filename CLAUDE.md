@@ -94,11 +94,17 @@ sin ventana) y subir los dos.
   `end_fired_at`): lo manual posterior se respeta; cambiar la fecha a una futura la rearma, una
   fecha pasada no hace nada. Se aplica antes de cada petición a la API (sin temporizador). Así lo
   eligió el usuario frente a un estado derivado de las fechas.
-- Roles del panel: `admin` (todo) y `moderator` (moderar, participantes, ver, descargar). Un
-  moderador **solo ve los eventos donde está asignado** (tabla `event_moderators`, se marca en
-  Ajustes del evento). Se comprueba en un solo lugar: el middleware de sesión de `admin.js` saca el
-  evento de la ruta (`requestEventId`); una ruta nueva del panel con id propio debe agregarse a
-  `EVENT_TABLES` o quedaría abierta a cualquier moderador. Evento nuevo o duplicado = sin moderadores.
+- Roles del panel: `admin` (todo), `moderator` (moderar, borrar envíos, participantes, ver,
+  descargar), `reviewer` (solo aprobar/rechazar fotos) y `editor` (crear y editar retos —no
+  borrarlos— y participantes). Todo se decide en el middleware de sesión de `admin.js`:
+  - **Qué puede cada rol**: tabla `ACCESS` (método + ruta → roles). Lo que no aparece es solo de
+    admin, así que **una ruta nueva del panel hay que agregarla ahí** o solo la verá el admin. El
+    panel lo refleja en `src/features/admin/roles.js` (`can.*`): cambiar los dos a la vez.
+  - **Qué eventos ve**: los no admin solo los asignados (tabla `event_moderators`, Ajustes → «Equipo
+    de este evento»). El evento sale de la ruta (`requestEventId`); una ruta con id propio debe estar
+    en `EVENT_TABLES`. Evento nuevo o duplicado = sin nadie asignado.
+  - `admins.role` tiene un CHECK (admin/moderator) que SQLite no deja cambiar: revisor y editor se
+    guardan como `role='moderator'` + `staff_role`; usar siempre `roleOf(fila)`.
 - **Botón central «Capturar»** de la barra (`/e/:slug/capturar`, `CaptureScreen.jsx`): escáner de QR
   dentro de la app + lista de retos de foto disponibles. `qrScan.js` usa `BarcodeDetector` si existe
   y, si no (iPhone), **jsQR** en un chunk aparte. Un QR leído solo navega a `/e/:slug/q/:código`
@@ -155,7 +161,7 @@ sin ventana) y subir los dos.
 - Cambios de esquema: **agregar** una migración nueva en `MIGRATIONS` (`db.js`), nunca editar una publicada.
 
 ## Verificar cambios
-    cd server && npm test             # 30 pruebas
+    cd server && npm test             # 31 pruebas
     cd server && npm run diagnose -- <slug>   # estado de un evento (retos, Ramas, ranking, envíos) (API completa + config)
     npx oxlint && npm run build       # 0 errores y 0 warnings esperados
     cd server && npm run seed-demo && npm run loadtest -- --code <código>
@@ -167,11 +173,11 @@ sin ventana) y subir los dos.
 - Hecho el 2026-10-05: botón Capturar y escáner de QR, `/` como entrada, requisitos borrados que
   bloqueaban retos, `npm run diagnose`, puntos fijos al moderar, guion del código de recuperación,
   booth sin cuenta regresiva, giro de Watt en AR, «Código nuevo», icono de IEEE, máximos de XP por
-  Rama en Ajustes, PDF de reglas, moderadores por evento, inicio y fin programados.
+  Rama en Ajustes, PDF de reglas, moderadores por evento, inicio y fin programados, roles revisor y editor.
 - Probado por el usuario en iPhone y Android (funcionalidad); él mismo dice que faltan más pruebas.
   **Sin probar en teléfonos reales** lo de hoy: escáner (Capturar, entrada, retos), giro de Watt en
-  AR, iconos en la pantalla de inicio. Sin abrir en navegador: tarjeta «Moderadores de este evento»
-  y avisos de inicio/fin en Ajustes (compilan y la API está probada). Tampoco Quick Look dentro de
+  AR, iconos en la pantalla de inicio. Sin abrir en navegador: tarjeta «Equipo de este evento» y
+  avisos de inicio/fin en Ajustes (compilan y la API está probada). Tampoco Quick Look dentro de
   un reto ni el conjunto con varias personas (`docs/ensayo.md`).
 - Producción tiene dos eventos de prueba del usuario (`tallerdirectivosxv` y otro). Sus retos de
   Rama piden 5 integrantes y casi todas las Ramas tienen 1 inscrito: es esperado que no se cumplan.

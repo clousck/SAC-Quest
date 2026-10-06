@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { NavLink, Route, Routes, useLocation, useParams } from 'react-router'
+import { NavLink, Navigate, Route, Routes, useLocation, useParams } from 'react-router'
 import { getEvent, listSubmissions } from '../../api/admin'
 import { ErrorBox, Spinner } from '../quest/ui'
-import { EventAdminContext } from './AdminContext'
+import { EventAdminContext, useAdmin } from './AdminContext'
 import ChallengeForm from './ChallengeForm'
 import ChallengesAdmin from './ChallengesAdmin'
 import Dashboard from './Dashboard'
@@ -18,6 +18,7 @@ import SurveyResults from './SurveyResults'
 export default function EventAdmin() {
   const { eventId } = useParams()
   const location = useLocation()
+  const { can } = useAdmin()
   const [event, setEvent] = useState(null)
   const [error, setError] = useState(null)
   const [pending, setPending] = useState(0)
@@ -39,6 +40,7 @@ export default function EventAdmin() {
 
   // Contador de pendientes siempre al dia (varios moderadores a la vez).
   useEffect(() => {
+    if (!can.review) return
     const id = setInterval(() => {
       if (document.visibilityState !== 'visible') return
       listSubmissions(eventId, { status: 'pending', limit: 1 })
@@ -46,7 +48,7 @@ export default function EventAdmin() {
         .catch(() => {})
     }, 20_000)
     return () => clearInterval(id)
-  }, [eventId])
+  }, [eventId, can.review])
 
   const ctx = useMemo(() => ({ event, setEvent, reloadEvent, pending, setPending }), [event, reloadEvent, pending])
 
@@ -63,6 +65,9 @@ export default function EventAdmin() {
   }
 
   const base = `/admin/e/${event.id}`
+  // Cada rol ve solo sus pestañas; quien no tiene Resumen entra a la primera suya.
+  const home = can.view ? null : can.review ? 'moderar' : can.challenges ? 'retos' : 'participantes'
+  const showChallenges = can.view || can.challenges
   return (
     <EventAdminContext.Provider value={ctx}>
       <div className="event-head no-print">
@@ -70,29 +75,36 @@ export default function EventAdmin() {
           {event.name} <span className={`pill st-${event.status}`}>{EVENT_STATUS[event.status]}</span>
         </h1>
         <nav className="admin-tabs">
-          <NavLink end to={base}>Resumen</NavLink>
-          <NavLink to={`${base}/moderar`}>
-            Moderar {pending > 0 && <span className="count">{pending}</span>}
-          </NavLink>
-          <NavLink to={`${base}/retos`}>Retos</NavLink>
-          <NavLink to={`${base}/participantes`}>Participantes</NavLink>
-          <NavLink to={`${base}/ranking`}>Ranking</NavLink>
-          <NavLink to={`${base}/galeria`}>Galería</NavLink>
-          <NavLink to={`${base}/ajustes`}>Ajustes</NavLink>
+          {can.view && <NavLink end to={base}>Resumen</NavLink>}
+          {can.review && (
+            <NavLink to={`${base}/moderar`}>
+              Moderar {pending > 0 && <span className="count">{pending}</span>}
+            </NavLink>
+          )}
+          {showChallenges && <NavLink to={`${base}/retos`}>Retos</NavLink>}
+          {can.participants && <NavLink to={`${base}/participantes`}>Participantes</NavLink>}
+          {can.view && <NavLink to={`${base}/ranking`}>Ranking</NavLink>}
+          {can.view && <NavLink to={`${base}/galeria`}>Galería</NavLink>}
+          {can.settings && <NavLink to={`${base}/ajustes`}>Ajustes</NavLink>}
         </nav>
       </div>
       <Routes>
-        <Route index element={<Dashboard />} />
-        <Route path="moderar" element={<Moderation />} />
-        <Route path="retos" element={<ChallengesAdmin />} />
-        <Route path="retos/nuevo" element={<ChallengeForm />} />
-        <Route path="retos/:challengeId" element={<ChallengeForm />} />
-        <Route path="retos/:challengeId/resultados" element={<SurveyResults />} />
-        <Route path="participantes" element={<ParticipantsAdmin />} />
-        <Route path="ranking" element={<RankingAdmin />} />
-        <Route path="galeria" element={<GalleryAdmin />} />
-        <Route path="ajustes" element={<SettingsAdmin />} />
-        <Route path="imprimir" element={<PrintQr />} />
+        <Route index element={home ? <Navigate replace to={`${base}/${home}`} /> : <Dashboard />} />
+        {can.review && <Route path="moderar" element={<Moderation />} />}
+        {showChallenges && (
+          <>
+            <Route path="retos" element={<ChallengesAdmin />} />
+            <Route path="retos/nuevo" element={<ChallengeForm />} />
+            <Route path="retos/:challengeId" element={<ChallengeForm />} />
+            <Route path="retos/:challengeId/resultados" element={<SurveyResults />} />
+            <Route path="imprimir" element={<PrintQr />} />
+          </>
+        )}
+        {can.participants && <Route path="participantes" element={<ParticipantsAdmin />} />}
+        {can.view && <Route path="ranking" element={<RankingAdmin />} />}
+        {can.view && <Route path="galeria" element={<GalleryAdmin />} />}
+        {can.settings && <Route path="ajustes" element={<SettingsAdmin />} />}
+        <Route path="*" element={<Navigate replace to={home ? `${base}/${home}` : base} />} />
       </Routes>
     </EventAdminContext.Provider>
   )

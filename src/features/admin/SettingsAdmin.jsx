@@ -23,6 +23,7 @@ import {
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, formatWhen } from '../quest/ui'
 import { useAdmin, useEventAdmin } from './AdminContext'
+import { ROLE_LABEL } from './roles'
 import QrImage, { appHost, eventJoinUrl, fromLocalInput, hasPublicOrigin, toLocalInput } from './QrImage'
 
 export default function SettingsAdmin() {
@@ -151,7 +152,7 @@ function AccessCard() {
   )
 }
 
-/** Que moderadores ven y moderan este evento. Los administradores ven todos. */
+/** Que cuentas (moderadores, revisores, editores) entran a este evento. Los administradores ven todos. */
 function ModeratorsCard() {
   const { event } = useEventAdmin()
   const { data, error, setData } = useAsync(() => listModerators(event.id), [event.id])
@@ -170,23 +171,23 @@ function ModeratorsCard() {
 
   return (
     <div className="card form">
-      <h3>Moderadores de este evento</h3>
+      <h3>Equipo de este evento</h3>
       <p className="muted small">
-        Un moderador solo ve y modera los eventos donde está marcado. Los administradores ven todos. Las cuentas se crean en{' '}
-        <Link to="/admin/usuarios">Usuarios</Link>.
+        Moderadores, revisores y editores solo entran a los eventos donde están marcados; cada uno hace lo que permite su rol. Los
+        administradores ven todos. Las cuentas y sus roles se manejan en <Link to="/admin/usuarios">Usuarios</Link>.
       </p>
       <div className="check-list">
         {list.map((m) => (
           <label key={m.id} className="check">
             <input type="checkbox" checked={m.assigned} onChange={(e) => toggle(m.id, e.target.checked)} />
             <span>
-              {m.name} <span className="muted small">@{m.username}</span>
+              {m.name} <span className="muted small">@{m.username} · {ROLE_LABEL[m.role]}</span>
               {!m.active && <span className="muted small"> · cuenta desactivada</span>}
             </span>
           </label>
         ))}
       </div>
-      {data && !list.length && <p className="muted small">Todavía no hay cuentas de moderador.</p>}
+      {data && !list.length && <p className="muted small">Todavía no hay cuentas que asignar: créalas en Usuarios.</p>}
       <ErrorBox error={error || actionError} />
     </div>
   )

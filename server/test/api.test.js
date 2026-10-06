@@ -595,6 +595,59 @@ describe('flujo completo', () => {
     await call('DELETE', `/admin/events/${otherId}`, { token: admin, body: { confirm: made.data.event.slug } })
   })
 
+  test('roles revisor y editor: cada uno solo lo suyo', async () => {
+    const ev = `/admin/events/${eventId}`
+    const mkUser = async (username, role) => {
+      const made = await call('POST', '/admin/users', { token: admin, body: { username, name: username, password: 'password123', role } })
+      assert.equal(made.data.user.role, role)
+      return made.data.user.id
+    }
+    const rev = await mkUser('revisora', 'reviewer')
+    const edi = await mkUser('editor1', 'editor')
+    const login = async (username) => (await call('POST', '/admin/login', { body: { username, password: 'password123' } })).data
+    assert.equal((await login('revisora')).admin.role, 'reviewer')
+    const reviewer = (await login('revisora')).token
+    const editor = (await login('editor1')).token
+    const st = async (method, path, token, body) => (await call(method, path, { token, body })).status
+
+    // Sin asignar al evento no entran, igual que un moderador.
+    assert.equal(await st('GET', ev, reviewer), 404)
+    const team = (await call('GET', `${ev}/moderators`, { token: admin })).data.moderators
+    assert.deepEqual(team.map((m) => m.role).sort(), ['editor', 'moderator', 'reviewer'])
+    await call('POST', `${ev}/moderators`, { token: admin, body: { adminIds: team.map((m) => m.id) } })
+
+    const pending = (await call('GET', `${ev}/submissions?status=approved`, { token: reviewer })).data.items[0]
+    const person = (await call('GET', `${ev}/participants`, { token: editor })).data.participants[0]
+
+    // Revisor: ve la cola y decide; nada mas.
+    assert.equal(await st('GET', `${ev}/challenges`, reviewer), 200)
+    assert.equal(await st('POST', `/admin/submissions/${pending.id}/review`, reviewer, { decision: 'approve' }), 200)
+    assert.equal(await st('DELETE', `/admin/submissions/${pending.id}`, reviewer), 403)
+    assert.equal(await st('GET', `${ev}/participants`, reviewer), 403)
+    assert.equal(await st('GET', `${ev}/stats`, reviewer), 403)
+    assert.equal(await st('POST', `${ev}/challenges`, reviewer, { type: 'QR', title: 'No debe' }), 403)
+    assert.equal(await st('POST', `${ev}/export`, reviewer, {}), 403)
+
+    // Editor: crea y edita retos y gestiona participantes; no modera ni borra retos ni toca ajustes.
+    const made = await call('POST', `${ev}/challenges`, { token: editor, body: { type: 'QR', title: 'Reto del editor' } })
+    assert.equal(made.status, 201)
+    assert.equal(await st('PATCH', `/admin/challenges/${made.data.challenge.id}`, editor, { title: 'Reto editado' }), 200)
+    assert.equal(await st('PATCH', `/admin/participants/${person.id}`, editor, { alias: person.alias }), 200)
+    assert.equal(await st('DELETE', `/admin/challenges/${made.data.challenge.id}`, editor), 403)
+    assert.equal(await st('GET', `${ev}/submissions`, editor), 403)
+    assert.equal(await st('POST', `/admin/submissions/${pending.id}/review`, editor, { decision: 'reject' }), 403)
+    assert.equal(await st('PATCH', ev, editor, { name: 'Otro nombre' }), 403)
+    assert.equal(await st('GET', '/admin/users', editor), 403)
+
+    // Cambiar el rol desde Usuarios y dejar todo como estaba.
+    const back = await call('PATCH', `/admin/users/${rev}`, { token: admin, body: { role: 'moderator' } })
+    assert.equal(back.data.user.role, 'moderator')
+    await call('DELETE', `/admin/challenges/${made.data.challenge.id}`, { token: admin })
+    for (const id of [rev, edi]) await call('PATCH', `/admin/users/${id}`, { token: admin, body: { active: false } })
+    const mods = (await call('GET', `${ev}/moderators`, { token: admin })).data.moderators
+    await call('POST', `${ev}/moderators`, { token: admin, body: { adminIds: mods.filter((m) => m.username === 'mod').map((m) => m.id) } })
+  })
+
   test('inicio y fin programados: el evento se abre y se cierra solo, una vez', async () => {
     const wait = (ms) => new Promise((r) => setTimeout(r, ms))
     const soon = (ms) => new Date(Date.now() + ms).toISOString()

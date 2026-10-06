@@ -3,6 +3,7 @@ import { Link, Route, Routes } from 'react-router'
 import { ADMIN_LOGOUT_EVENT, adminSession, getAdminMe, login, logout } from '../../api/admin'
 import { ErrorBox, Spinner } from '../quest/ui'
 import { AdminContext } from './AdminContext'
+import { capsFor } from './roles'
 import { setAppOrigin } from './QrImage'
 import EventAdmin from './EventAdmin'
 import EventsList from './EventsList'
@@ -39,7 +40,10 @@ export default function AdminApp() {
     setAdmin(null)
   }, [])
 
-  const ctx = useMemo(() => admin && { admin, isAdmin: admin.role === 'admin', logout: doLogout }, [admin, doLogout])
+  const ctx = useMemo(
+    () => admin && { admin, isAdmin: admin.role === 'admin', can: capsFor(admin.role), logout: doLogout },
+    [admin, doLogout],
+  )
 
   if (admin === undefined) {
     return (

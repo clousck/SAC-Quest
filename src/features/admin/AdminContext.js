@@ -1,6 +1,6 @@
 import { createContext, useContext } from 'react'
 
-/** { admin, isAdmin, logout } */
+/** { admin, isAdmin, can, logout }; `can` sale de roles.js */
 export const AdminContext = createContext(null)
 export const useAdmin = () => useContext(AdminContext)
 

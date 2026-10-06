@@ -55,6 +55,49 @@ export const DEFAULT_BADGES = [
   { name: 'Explorador', icon: '🧭', description: 'Encuentra todos los checkpoints QR', rule: { type: 'allOfType', challengeType: 'QR' } },
 ]
 
+// Roles del panel. `admin` puede todo y ve todos los eventos; los demas solo
+// los eventos donde estan asignados y solo lo que diga ACCESS.
+const STAFF_ROLES = ['moderator', 'reviewer', 'editor']
+const ROLES = ['admin', ...STAFF_ROLES]
+
+/** Rol efectivo de una fila de `admins` (ver la migracion de staff_role). */
+const roleOf = (row) => (row.role === 'admin' ? 'admin' : STAFF_ROLES.includes(row.staff_role) ? row.staff_role : 'moderator')
+
+/**
+ * Lo que puede hacer cada rol que no es admin: [metodo, ruta, roles]. Una
+ * peticion que no aparece aca es solo para administradores. Es el unico lugar
+ * donde se decide; los requireAdmin de cada ruta quedan como segunda barrera.
+ *  - moderator: moderar, borrar envios, participantes, ver y descargar.
+ *  - reviewer:  solo la cola de fotos: aprobar y rechazar.
+ *  - editor:    crear y editar retos (no borrarlos) y gestionar participantes.
+ */
+const ACCESS = [
+  ['GET', /^\/(me|events)$/, STAFF_ROLES],
+  ['POST', /^\/logout$/, STAFF_ROLES],
+  // Lecturas que usan los formularios y filtros de todas las pantallas.
+  ['GET', /^\/events\/\d+$/, STAFF_ROLES],
+  ['GET', /^\/events\/\d+\/(teams|challenges|badges|team-goals)$/, STAFF_ROLES],
+  ['GET', /^\/challenges\/\d+$/, STAFF_ROLES],
+  // Moderacion.
+  ['GET', /^\/events\/\d+\/submissions$/, ['moderator', 'reviewer']],
+  ['POST', /^\/submissions\/\d+\/review$/, ['moderator', 'reviewer']],
+  ['DELETE', /^\/submissions\/\d+$/, ['moderator']],
+  // Participantes.
+  ['GET', /^\/events\/\d+\/participants$/, ['moderator', 'editor']],
+  ['PATCH', /^\/participants\/\d+$/, ['moderator', 'editor']],
+  ['POST', /^\/participants\/\d+\/recovery-code$/, ['moderator', 'editor']],
+  // Ver y descargar.
+  ['GET', /^\/events\/\d+\/(ranking|stats|announcements)$/, ['moderator']],
+  ['POST', /^\/events\/\d+\/(announcements|export)$/, ['moderator']],
+  ['DELETE', /^\/announcements\/\d+$/, ['moderator']],
+  ['GET', /^\/challenges\/\d+\/survey-results$/, ['moderator', 'editor']],
+  // Retos.
+  ['POST', /^\/events\/\d+\/challenges(\/reorder)?$/, ['editor']],
+  ['PATCH', /^\/challenges\/\d+$/, ['editor']],
+  ['POST', /^\/challenges\/\d+\/(regenerate-qr|image)$/, ['editor']],
+  ['DELETE', /^\/challenges\/\d+\/image$/, ['editor']],
+]
+
 const BADGE_RULES = ['count', 'xp', 'category', 'challengeType', 'challenge', 'allOfType']
 
 /** Rutas del panel: /api/admin/... */
@@ -127,12 +170,16 @@ export function adminRoutes(svc) {
         { hash: sha256(token), t: now() },
       )
     if (!admin) throw new HttpError(401, 'unauthenticated', 'Inicia sesión.')
+    admin.role = roleOf(admin)
     c.set('admin', admin)
     // Un moderador solo entra a los eventos donde esta asignado. Para quien no
     // lo esta, el evento (y todo lo suyo) no existe.
     if (admin.role !== 'admin') {
       const eventId = requestEventId(c.req.path)
       if (eventId != null && !moderates(admin.id, eventId)) throw notFound('Evento no encontrado.')
+      const path = c.req.path.replace(/^.*?\/admin(?=\/)/, '')
+      const rule = ACCESS.find(([method, pattern]) => method === c.req.method && pattern.test(path))
+      if (!rule?.[2].includes(admin.role)) throw forbidden('Tu rol no permite hacer esto.')
     }
     await next()
   })
@@ -160,7 +207,7 @@ export function adminRoutes(svc) {
   const moderates = (adminId, eventId) =>
     !!db.get('SELECT 1 FROM event_moderators WHERE admin_id = :adminId AND event_id = :eventId', { adminId, eventId })
 
-  /** Crear/editar eventos, retos, equipos, badges y usuarios: solo rol admin. */
+  /** Eventos, ajustes, equipos, badges y usuarios: solo rol admin (ver tambien ACCESS). */
   const requireAdmin = (c) => {
     if (c.get('admin').role !== 'admin') throw forbidden('Solo un administrador puede hacer esto.')
   }
@@ -251,12 +298,12 @@ export function adminRoutes(svc) {
   const listModerators = (eventId) =>
     db
       .all(
-        `SELECT a.id, a.username, a.name, a.active, m.event_id IS NOT NULL AS assigned
+        `SELECT a.id, a.username, a.name, a.active, a.role, a.staff_role, m.event_id IS NOT NULL AS assigned
            FROM admins a LEFT JOIN event_moderators m ON m.admin_id = a.id AND m.event_id = :eventId
           WHERE a.role = 'moderator' ORDER BY a.name COLLATE NOCASE`,
         { eventId },
       )
-      .map((a) => ({ id: a.id, username: a.username, name: a.name, active: !!a.active, assigned: !!a.assigned }))
+      .map((a) => ({ id: a.id, username: a.username, name: a.name, role: roleOf(a), active: !!a.active, assigned: !!a.assigned }))
 
   r.get('/events/:eventId/moderators', (c) => {
     requireAdmin(c)
@@ -693,7 +740,6 @@ export function adminRoutes(svc) {
   })
 
   r.post('/events/:eventId/challenges', async (c) => {
-    requireAdmin(c)
     const ev = eventParam(c)
     const body = await jsonBody(c)
     const data = pick(body, challengeFields)
@@ -725,7 +771,6 @@ export function adminRoutes(svc) {
   r.get('/challenges/:id', (c) => c.json({ challenge: adminChallenge(getChallenge(int(c.req.param('id'), 'id'))) }))
 
   r.patch('/challenges/:id', async (c) => {
-    requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
     const body = await jsonBody(c)
     const data = pick(body, challengeFields)
@@ -743,7 +788,6 @@ export function adminRoutes(svc) {
 
   // Un QR fotografiado y compartido se invalida generando otro.
   r.post('/challenges/:id/regenerate-qr', (c) => {
-    requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
     if (!hasQr(ch.type)) throw badRequest('Este reto no tiene código QR.')
     update('challenges', ch.id, { qrCode: uniqueCode('challenges', 'qr_code', 6), updatedAt: now() }, challengeColumns)
@@ -786,7 +830,6 @@ export function adminRoutes(svc) {
   })
 
   r.post('/events/:eventId/challenges/reorder', async (c) => {
-    requireAdmin(c)
     const ev = eventParam(c)
     const { ids } = await jsonBody(c)
     if (!Array.isArray(ids)) throw badRequest('Falta el orden.')
@@ -829,7 +872,6 @@ export function adminRoutes(svc) {
   })
 
   r.post('/challenges/:id/image', bodyLimit({ maxSize: 3 * 1024 * 1024 }), async (c) => {
-    requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
     const body = await c.req.parseBody()
     const buf = await readJpeg(body.image, 'image', 2 * 1024 * 1024)
@@ -841,7 +883,6 @@ export function adminRoutes(svc) {
   })
 
   r.delete('/challenges/:id/image', async (c) => {
-    requireAdmin(c)
     const ch = getChallenge(int(c.req.param('id'), 'id'))
     db.run('UPDATE challenges SET image_key = NULL WHERE id = :id', { id: ch.id })
     await storage.remove(ch.imageKey)
@@ -1314,8 +1355,11 @@ export function adminRoutes(svc) {
   // --- usuarios del panel ---
 
   function publicAdmin(a) {
-    return { id: a.id, username: a.username, name: a.name, role: a.role, active: !!a.active }
+    return { id: a.id, username: a.username, name: a.name, role: roleOf(a), active: !!a.active }
   }
+
+  /** Como se guarda un rol: la columna `role` solo admite admin/moderator. */
+  const roleColumns = (role) => ({ role: role === 'admin' ? 'admin' : 'moderator', staffRole: role === 'admin' || role === 'moderator' ? null : role })
 
   r.get('/users', (c) => {
     requireAdmin(c)
@@ -1331,13 +1375,13 @@ export function adminRoutes(svc) {
     if (db.get('SELECT 1 FROM admins WHERE username = :username', { username })) throw conflict('Ese usuario ya existe.')
     const id = Number(
       db.run(
-        `INSERT INTO admins (username, name, password_hash, role, created_at)
-         VALUES (:username, :name, :hash, :role, :t)`,
+        `INSERT INTO admins (username, name, password_hash, role, staff_role, created_at)
+         VALUES (:username, :name, :hash, :role, :staffRole, :t)`,
         {
           username,
           name: str(body.name, 'nombre', { min: 2, max: 60 }),
           hash: await hashPassword(password),
-          role: oneOf(body.role ?? 'moderator', 'rol', ['admin', 'moderator']),
+          ...roleColumns(oneOf(body.role ?? 'moderator', 'rol', ROLES)),
           t: now(),
         },
       ).lastInsertRowid,
@@ -1352,16 +1396,19 @@ export function adminRoutes(svc) {
     const body = await jsonBody(c)
     const data = pick(body, {
       name: (v) => str(v, 'nombre', { min: 2, max: 60 }),
-      role: (v) => oneOf(v, 'rol', ['admin', 'moderator']),
+      role: (v) => oneOf(v, 'rol', ROLES),
       active: (v) => !!v,
     })
+    const selfDemotion = data.role && data.role !== 'admin'
+    if (data.role) Object.assign(data, roleColumns(data.role))
     if (body.password) data.passwordHash = await hashPassword(str(body.password, 'contraseña', { min: 8, max: 200 }))
-    if (target.id === c.get('admin').id && (data.role === 'moderator' || data.active === false)) {
+    if (target.id === c.get('admin').id && (selfDemotion || data.active === false)) {
       throw badRequest('No puedes quitarte a ti mismo el rol de administrador.')
     }
     update('admins', target.id, data, {
       name: ['name'],
       role: ['role'],
+      staffRole: ['staff_role'],
       active: ['active', Number],
       passwordHash: ['password_hash'],
     })

@@ -209,6 +209,13 @@ const MIGRATIONS = [
   UPDATE events SET start_fired_at = starts_at WHERE starts_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now');
   UPDATE events SET end_fired_at = ends_at WHERE ends_at <= strftime('%Y-%m-%dT%H:%M:%fZ', 'now');
   `,
+  // Roles nuevos del panel: revisor (solo aprueba/rechaza fotos) y editor
+  // (retos y participantes). `admins.role` tiene un CHECK que SQLite no deja
+  // cambiar sin rehacer la tabla, asi que el rol fino va en otra columna:
+  // role = 'moderator' + staff_role = 'reviewer' | 'editor' (ver roleOf).
+  `
+  ALTER TABLE admins ADD COLUMN staff_role TEXT;
+  `,
 ]
 
 function migrate(db) {

@@ -3,10 +3,11 @@ import { Link } from 'react-router'
 import { listParticipants, listTeams, resetRecoveryCode, updateParticipant } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, Spinner } from '../quest/ui'
-import { useEventAdmin } from './AdminContext'
+import { useAdmin, useEventAdmin } from './AdminContext'
 
 export default function ParticipantsAdmin() {
   const { event } = useEventAdmin()
+  const { can } = useAdmin()
   const { data, error, loading, reload } = useAsync(() => listParticipants(event.id), [event.id])
   const teams = useAsync(() => listTeams(event.id), [event.id])
   const [q, setQ] = useState('')
@@ -72,7 +73,7 @@ export default function ParticipantsAdmin() {
               ) : (
                 <tr key={p.id} className={p.banned ? 'banned' : ''}>
                   <td>
-                    <Link to={`/admin/e/${event.id}/galeria?participantId=${p.id}`}>{p.alias}</Link>
+                    {can.view ? <Link to={`/admin/e/${event.id}/galeria?participantId=${p.id}`}>{p.alias}</Link> : p.alias}
                     {p.banned && <span className="pill bad">suspendido</span>}
                   </td>
                   <td>{p.team?.name ?? '—'}</td>

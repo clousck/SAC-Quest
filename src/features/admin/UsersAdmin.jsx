@@ -3,10 +3,12 @@ import { createUser, listUsers, updateUser } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, Spinner } from '../quest/ui'
 import { useAdmin } from './AdminContext'
+import { ROLE_HELP, ROLE_LABEL } from './roles'
+
+const ROLE_OPTIONS = ['moderator', 'reviewer', 'editor', 'admin']
 
 /**
- * Cuentas del panel. Rol "admin": todo. Rol "moderador": revisar fotos,
- * gestionar participantes, ver todo y descargar; no edita retos ni ajustes.
+ * Cuentas del panel. Que puede cada rol: roles.js (y ACCESS en el servidor).
  */
 export default function UsersAdmin() {
   const { admin, isAdmin } = useAdmin()
@@ -43,10 +45,16 @@ export default function UsersAdmin() {
   return (
     <section className="admin-page narrow">
       <h1>Usuarios del panel</h1>
+      <ul className="muted small role-help">
+        {['admin', ...ROLE_OPTIONS.slice(0, 3)].map((r) => (
+          <li key={r}>
+            <strong>{ROLE_LABEL[r]}</strong>: {ROLE_HELP[r]}
+          </li>
+        ))}
+      </ul>
       <p className="muted small">
-        <strong>Admin</strong>: todo. <strong>Moderador</strong>: revisa fotos, gestiona participantes, ve estadísticas y
-        descarga fotos; no edita retos ni ajustes, y solo en los eventos donde se le asigna (Ajustes del evento → Moderadores de
-        este evento).
+        Salvo los administradores, cada cuenta solo entra a los eventos donde se le asigna (Ajustes del evento → Equipo de este
+        evento).
       </p>
       <ErrorBox error={error || actionError} retry={error ? reload : null} />
       {loading && !data && <Spinner />}
@@ -60,8 +68,11 @@ export default function UsersAdmin() {
             {u.id !== admin.id && (
               <span className="row">
                 <select value={u.role} onChange={(e) => change(u, { role: e.target.value })} aria-label="Rol">
-                  <option value="admin">Admin</option>
-                  <option value="moderator">Moderador</option>
+                  {ROLE_OPTIONS.map((r) => (
+                    <option key={r} value={r}>
+                      {ROLE_LABEL[r]}
+                    </option>
+                  ))}
                 </select>
                 <button
                   className="btn small"
@@ -99,8 +110,11 @@ export default function UsersAdmin() {
           <label>
             Rol
             <select value={f.role} onChange={set('role')}>
-              <option value="moderator">Moderador</option>
-              <option value="admin">Admin</option>
+              {ROLE_OPTIONS.map((r) => (
+                <option key={r} value={r}>
+                  {ROLE_LABEL[r]}
+                </option>
+              ))}
             </select>
           </label>
         </div>

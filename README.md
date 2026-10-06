@@ -24,7 +24,8 @@ teléfono, sin instalar nada:
   (también desde el teléfono), participantes, ranking con pantalla grande,
   estadísticas, descarga de fotos en ZIP, imprimir QRs, abrir y cerrar el
   evento (a mano o solo, con hora de inicio y de fin), duplicar un evento para
-  el siguiente. Cada moderador ve solo los eventos que tiene asignados.
+  el siguiente. Cuatro roles (admin, moderador, revisor de fotos y editor de
+  retos); salvo el admin, cada cuenta ve solo los eventos que tiene asignados.
 - **Multi-evento**: ningún evento está en el código; cada uno se crea en el panel.
 
 ## Instalación

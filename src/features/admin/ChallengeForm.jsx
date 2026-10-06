@@ -90,7 +90,8 @@ function toBody(f) {
 export default function ChallengeForm() {
   const { challengeId } = useParams()
   const { event } = useEventAdmin()
-  const { isAdmin } = useAdmin()
+  const { isAdmin, can } = useAdmin()
+  const canEdit = can.challenges
   const navigate = useNavigate()
   const isNew = !challengeId
   // Un reto nuevo arranca con el segundo valor del evento (el "normal").
@@ -170,7 +171,7 @@ export default function ChallengeForm() {
 
   if (loading) return <Spinner />
   const categories = [...new Set(others.map((c) => c.category).filter(Boolean))]
-  const readOnly = !isAdmin
+  const readOnly = !canEdit
 
   return (
     <section className="admin-page narrow">
@@ -178,7 +179,7 @@ export default function ChallengeForm() {
         ← Retos
       </Link>
       <h2>{isNew ? 'Nuevo reto' : form.title || 'Reto'}</h2>
-      {readOnly && <p className="notice">Solo un administrador puede editar retos.</p>}
+      {readOnly && <p className="notice">Tu rol no permite editar retos.</p>}
 
       <form className="card form" onSubmit={save}>
         <fieldset disabled={readOnly || busy}>
@@ -360,7 +361,7 @@ export default function ChallengeForm() {
             <h3>Imagen del reto (opcional)</h3>
             <p className="muted small">Reemplaza al icono en la app. Se recomienda cuadrada.</p>
             {challenge.imageUrl && <img className="ch-image-preview" src={mediaUrl(challenge.imageUrl)} alt="" />}
-            {isAdmin && (
+            {canEdit && (
               <div className="row">
                 <input ref={imageInput} type="file" accept="image/*" hidden onChange={onImage} />
                 <button className="btn" onClick={() => imageInput.current.click()} disabled={busy}>
@@ -398,7 +399,7 @@ export default function ChallengeForm() {
                 <Link className="btn" to={`${base}/imprimir?reto=${challenge.id}`}>
                   🖨️ Imprimir
                 </Link>
-                {isAdmin && (
+                {canEdit && (
                   <button
                     className="btn"
                     onClick={async () => {

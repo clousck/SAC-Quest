@@ -19,7 +19,8 @@ function timeState(c, now = Date.now()) {
 
 export default function ChallengesAdmin() {
   const { event } = useEventAdmin()
-  const { isAdmin } = useAdmin()
+  const { can } = useAdmin()
+  const canEdit = can.challenges
   const { data, error, loading, reload, setData } = useAsync(() => listChallenges(event.id), [event.id])
   const list = data?.challenges ?? []
   const base = `/admin/e/${event.id}`
@@ -56,7 +57,7 @@ export default function ChallengesAdmin() {
     <section className="admin-page">
       <div className="toolbar">
         <h2>Retos ({list.length})</h2>
-        {isAdmin && (
+        {canEdit && (
           <div className="row">
             {list.some((c) => TIMED.includes(c.type)) && (
               <Link className="btn" to={`${base}/imprimir`}>
@@ -75,7 +76,7 @@ export default function ChallengesAdmin() {
       <ul className="admin-list">
         {list.map((c, i) => (
           <li key={c.id} className={`card ch-row st-${c.status}`}>
-            {isAdmin && (
+            {canEdit && (
               <div className="order-btns">
                 <button className="btn small" disabled={i === 0} onClick={() => move(i, -1)} aria-label="Subir">
                   ↑
@@ -113,7 +114,7 @@ export default function ChallengesAdmin() {
             </div>
             <div className="ch-row-side">
               <span className={`pill st-${c.status}`}>{CH_STATUS[c.status]}</span>
-              {isAdmin && c.status === 'active' && TIMED.includes(c.type) && (
+              {canEdit && c.status === 'active' && TIMED.includes(c.type) && (
                 <div className="row">
                   {timeState(c).closed ? (
                     <button className="btn small" onClick={() => openNow(c)}>
@@ -129,7 +130,7 @@ export default function ChallengesAdmin() {
                   </button>
                 </div>
               )}
-              {isAdmin && (
+              {canEdit && (
                 <button className="btn small" onClick={() => toggle(c)}>
                   {c.status === 'active' ? 'Desactivar' : 'Activar'}
                 </button>

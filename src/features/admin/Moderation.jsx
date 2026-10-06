@@ -3,7 +3,7 @@ import { mediaUrl } from '../../api/client'
 import { deleteSubmission, listChallenges, listSubmissions, reviewSubmission } from '../../api/admin'
 import { useAsync } from '../../shared/useAsync'
 import { ErrorBox, Spinner, formatWhen } from '../quest/ui'
-import { useEventAdmin } from './AdminContext'
+import { useAdmin, useEventAdmin } from './AdminContext'
 
 const REASONS = ['No cumple el reto', 'Foto borrosa u oscura', 'Foto repetida', 'Contenido inapropiado']
 const STATUS_TABS = [
@@ -20,6 +20,8 @@ const STATUS_TABS = [
  */
 export default function Moderation() {
   const { event, setPending } = useEventAdmin()
+  // Borrar un envio para siempre no es parte de revisar: el rol revisor no lo ve.
+  const canDelete = useAdmin().can.deleteSubmissions
   const [status, setStatus] = useState('pending')
   const [challengeId, setChallengeId] = useState('')
   const [items, setItems] = useState([])
@@ -111,7 +113,7 @@ export default function Moderation() {
 
       {status === 'pending' ? (
         items.length ? (
-          <ReviewCard key={items[0].id} item={items[0]} onDecide={decide} onDelete={remove} queued={items.length - 1} />
+          <ReviewCard key={items[0].id} item={items[0]} onDecide={decide} onDelete={canDelete ? remove : null} queued={items.length - 1} />
         ) : loading ? (
           <Spinner />
         ) : (
@@ -121,7 +123,7 @@ export default function Moderation() {
         <>
           <div className="sub-grid">
             {items.map((item) => (
-              <SubmissionTile key={item.id} item={item} onDecide={decide} onDelete={remove} />
+              <SubmissionTile key={item.id} item={item} onDecide={decide} onDelete={canDelete ? remove : null} />
             ))}
           </div>
           {loading && <Spinner />}
@@ -216,9 +218,11 @@ function ReviewCard({ item, onDecide, onDelete, queued }) {
             </div>
           </div>
         )}
-        <button className="link-btn" onClick={() => onDelete(item)}>
-          Borrar definitivamente
-        </button>
+        {onDelete && (
+          <button className="link-btn" onClick={() => onDelete(item)}>
+            Borrar definitivamente
+          </button>
+        )}
       </div>
     </div>
   )
@@ -253,9 +257,11 @@ function SubmissionTile({ item, onDecide, onDelete }) {
             Aprobar
           </button>
         )}
-        <button className="btn small" onClick={() => onDelete(item)} aria-label="Borrar">
-          🗑️
-        </button>
+        {onDelete && (
+          <button className="btn small" onClick={() => onDelete(item)} aria-label="Borrar">
+            🗑️
+          </button>
+        )}
       </div>
     </div>
   )
