@@ -27,10 +27,16 @@ import { ROLE_LABEL } from './roles'
 import QrImage, { appHost, eventJoinUrl, fromLocalInput, hasPublicOrigin, toLocalInput } from './QrImage'
 
 export default function SettingsAdmin() {
-  const { isAdmin } = useAdmin()
+  const { isAdmin, can } = useAdmin()
   return (
     <section className="admin-page narrow">
-      {!isAdmin && <p className="notice">Solo un administrador puede cambiar los ajustes.</p>}
+      {!isAdmin && (
+        <p className="notice">
+          {can.teams
+            ? 'Aquí puedes cambiar las Ramas y los retos de Rama; el resto de los ajustes lo cambia un administrador.'
+            : 'Solo un administrador puede cambiar los ajustes.'}
+        </p>
+      )}
       <StatusCard />
       <AccessCard />
       {isAdmin && <ModeratorsCard />}
@@ -271,7 +277,7 @@ function EventCard() {
 
 function TeamsCard() {
   const { event } = useEventAdmin()
-  const { isAdmin } = useAdmin()
+  const { can } = useAdmin()
   const { data, error, setData } = useAsync(() => listTeams(event.id), [event.id])
   const [text, setText] = useState('')
   const [actionError, setActionError] = useState(null)
@@ -303,7 +309,7 @@ function TeamsCard() {
           <li key={t.id}>
             <span>{t.name}</span>
             <span className="muted small">{t.members} personas</span>
-            {isAdmin && (
+            {can.teams && (
               <span className="row">
                 <button
                   className="btn small"
@@ -329,7 +335,7 @@ function TeamsCard() {
           </li>
         ))}
       </ul>
-      {isAdmin && (
+      {can.teams && (
         <form className="form" onSubmit={add}>
           <label>
             Agregar (una por línea)
@@ -513,7 +519,7 @@ const MAX_GOAL_MEMBERS = 5
 /** Retos de equipo: dan puntos al equipo (no XP) cuando N integrantes completan un reto. */
 function TeamGoalsCard() {
   const { event } = useEventAdmin()
-  const { isAdmin } = useAdmin()
+  const { can } = useAdmin()
   const label = event.settings.teamLabel
   const goals = useAsync(() => listTeamGoals(event.id), [event.id])
   const challenges = useAsync(() => listChallenges(event.id), [event.id])
@@ -556,7 +562,7 @@ function TeamGoalsCard() {
                   {g.members} o más integrantes completan «{chList.find((c) => c.id === g.challengeId)?.title ?? '¿?'}»
                 </small>
               </span>
-              {isAdmin && (
+              {can.teams && (
                 <span className="row">
                   <button className="btn small" onClick={() => setEditing(g.id)}>
                     Editar
@@ -575,7 +581,7 @@ function TeamGoalsCard() {
       </ul>
       {!list.length && <p className="muted small">Todavía no hay retos de {label}: nadie suma esa parte del XP.</p>}
       {editing === 'new' && <TeamGoalForm challenges={chList} onSave={saveGoal} onCancel={() => setEditing(null)} />}
-      {isAdmin && editing !== 'new' && chList.length > 0 && (
+      {can.teams && editing !== 'new' && chList.length > 0 && (
         <button className="btn" onClick={() => setEditing('new')}>
           + Nuevo reto de {label}
         </button>

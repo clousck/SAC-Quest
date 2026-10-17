@@ -95,7 +95,7 @@ sin ventana) y subir los dos.
   fecha pasada no hace nada. Se aplica antes de cada petición a la API (sin temporizador). Así lo
   eligió el usuario frente a un estado derivado de las fechas.
 - Roles del panel: `admin` (todo), `moderator` (crear y editar retos —no borrarlos—,
-  moderar, borrar envíos, participantes, ver, descargar) y `reviewer` (solo aprobar/rechazar fotos).
+  moderar, borrar envíos, participantes, ver, descargar y, en Ajustes, solo Ramas y retos de Rama) y `reviewer` (solo aprobar/rechazar fotos).
   Hubo un rol `editor` un día (2026-10-05); el usuario lo unió al de moderador. Todo se decide en el middleware de sesión de `admin.js`:
   - **Qué puede cada rol**: tabla `ACCESS` (método + ruta → roles). Lo que no aparece es solo de
     admin, así que **una ruta nueva del panel hay que agregarla ahí** o solo la verá el admin. El

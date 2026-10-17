@@ -7,13 +7,14 @@ asignados.
 | Rol | Qué puede hacer |
 |---|---|
 | **Admin** | Todo, en todos los eventos |
-| **Moderador** | Crear y editar retos (no borrarlos), revisar y borrar fotos, gestionar participantes, ver rankings y resultados, descargar |
+| **Moderador** | Crear y editar retos (no borrarlos), revisar y borrar fotos, gestionar participantes, ver rankings y resultados, descargar; en Ajustes, solo las Ramas y los retos de Rama |
 | **Revisor** | Solo aprobar y rechazar las fotos de los retos |
 
 ## Antes del evento (admin)
 
-Los retos (paso 3) también los puede crear y editar un moderador asignado al
-evento; borrar un reto y todo lo demás de esta lista es solo del admin.
+Los retos (paso 3), las Ramas (paso 2) y los retos de Rama (paso 5) también los
+puede manejar un moderador asignado al evento; borrar un reto y todo lo demás de
+esta lista es solo del admin.
 
 1. **Crear el evento** (o duplicar uno anterior desde Ajustes → Duplicar).
 2. **Ajustes → Ramas**: cargar las Ramas, una por línea. Las Ramas muy chicas

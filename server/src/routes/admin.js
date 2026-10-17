@@ -67,8 +67,9 @@ const roleOf = (row) => (row.role === 'admin' ? 'admin' : STAFF_ROLES.includes(r
  * Lo que puede hacer cada rol que no es admin: [metodo, ruta, roles]. Una
  * peticion que no aparece aca es solo para administradores. Es el unico lugar
  * donde se decide; los requireAdmin de cada ruta quedan como segunda barrera.
- *  - moderator: moderar, borrar envios, participantes, ver y descargar, y
- *               crear y editar retos (borrarlos no: se lleva fotos y puntos).
+ *  - moderator: moderar, borrar envios, participantes, ver y descargar,
+ *               crear y editar retos (borrarlos no: se lleva fotos y puntos)
+ *               y, en Ajustes, solo las Ramas y los retos de Rama.
  *  - reviewer:  solo la cola de fotos: aprobar y rechazar.
  */
 const ACCESS = [
@@ -96,6 +97,10 @@ const ACCESS = [
   ['PATCH', /^\/challenges\/\d+$/, ['moderator']],
   ['POST', /^\/challenges\/\d+\/(regenerate-qr|image)$/, ['moderator']],
   ['DELETE', /^\/challenges\/\d+\/image$/, ['moderator']],
+  // Ajustes: Ramas y retos de Rama.
+  ['POST', /^\/events\/\d+\/(teams|team-goals)$/, ['moderator']],
+  ['PATCH', /^\/(teams|team-goals)\/\d+$/, ['moderator']],
+  ['DELETE', /^\/(teams|team-goals)\/\d+$/, ['moderator']],
 ]
 
 const BADGE_RULES = ['count', 'xp', 'category', 'challengeType', 'challenge', 'allOfType']
@@ -207,9 +212,13 @@ export function adminRoutes(svc) {
   const moderates = (adminId, eventId) =>
     !!db.get('SELECT 1 FROM event_moderators WHERE admin_id = :adminId AND event_id = :eventId', { adminId, eventId })
 
-  /** Eventos, ajustes, equipos, badges y usuarios: solo rol admin (ver tambien ACCESS). */
+  /** Eventos, ajustes, badges y usuarios: solo rol admin (ver tambien ACCESS). */
   const requireAdmin = (c) => {
     if (c.get('admin').role !== 'admin') throw forbidden('Solo un administrador puede hacer esto.')
+  }
+  /** Ramas y retos de Rama: admin o moderador. */
+  const requireModerator = (c) => {
+    if (!['admin', 'moderator'].includes(c.get('admin').role)) throw forbidden('Tu rol no permite hacer esto.')
   }
 
   r.post('/logout', (c) => {
@@ -573,7 +582,7 @@ export function adminRoutes(svc) {
 
   // Acepta varios nombres a la vez (uno por linea en el panel).
   r.post('/events/:eventId/teams', async (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const ev = eventParam(c)
     const body = await jsonBody(c)
     const names = (Array.isArray(body.names) ? body.names : [body.name])
@@ -598,7 +607,7 @@ export function adminRoutes(svc) {
   }
 
   r.patch('/teams/:teamId', async (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const team = teamOf(c)
     const data = pick(await jsonBody(c), {
       name: (v) => str(v, 'nombre', { min: 1, max: 80 }),
@@ -613,7 +622,7 @@ export function adminRoutes(svc) {
   })
 
   r.delete('/teams/:teamId', (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const team = teamOf(c)
     db.run('DELETE FROM teams WHERE id = :id', { id: team.id })
     return c.json({ teams: listTeams(team.event_id) })
@@ -1034,7 +1043,7 @@ export function adminRoutes(svc) {
   r.get('/events/:eventId/team-goals', (c) => c.json({ goals: listTeamGoals(eventParam(c).id) }))
 
   r.post('/events/:eventId/team-goals', async (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const ev = eventParam(c)
     const body = await jsonBody(c)
     const data = pick(body, teamGoalFields)
@@ -1050,7 +1059,7 @@ export function adminRoutes(svc) {
   }
 
   r.patch('/team-goals/:id', async (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const g = teamGoalOf(c)
     const body = await jsonBody(c)
     const data = pick(body, teamGoalFields)
@@ -1068,7 +1077,7 @@ export function adminRoutes(svc) {
   })
 
   r.delete('/team-goals/:id', (c) => {
-    requireAdmin(c)
+    requireModerator(c)
     const g = teamGoalOf(c)
     db.run('DELETE FROM team_goals WHERE id = :id', { id: g.id })
     return c.json({ goals: listTeamGoals(g.event_id) })

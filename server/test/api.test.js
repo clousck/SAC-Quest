@@ -310,7 +310,6 @@ describe('flujo completo', () => {
     assert.deepEqual({ members: b.members, active: b.active, score: b.score }, { members: 1, active: 0, score: 0 })
 
     const goal = { name: 'Presentes en el checkpoint', points: 10, challengeId: qrCh.id, members: 1 }
-    assert.equal((await call('POST', `/admin/events/${eventId}/team-goals`, { token: mod, body: goal })).status, 403)
     const tooMany = await call('POST', `/admin/events/${eventId}/team-goals`, { token: admin, body: { ...goal, members: 6 } })
     assert.equal(tooMany.status, 400, 'un reto de Rama no pide más de 5 integrantes')
     const foreign = await call('POST', `/admin/events/${eventId}/team-goals`, { token: admin, body: { ...goal, challengeId: 9999 } })
@@ -630,6 +629,24 @@ describe('flujo completo', () => {
     assert.equal(await st('DELETE', `/admin/challenges/${made.data.challenge.id}`, mod), 403)
     assert.equal(await st('PATCH', ev, mod, { name: 'Otro nombre' }), 403)
     assert.equal(await st('GET', '/admin/users', mod), 403)
+
+    // En Ajustes, el moderador maneja las Ramas y los retos de Rama; el revisor no.
+    assert.equal(await st('POST', `${ev}/teams`, reviewer, { names: ['Rama Revisor'] }), 403)
+    const teams = (await call('POST', `${ev}/teams`, { token: mod, body: { names: ['Rama Moderador'] } })).data.teams
+    const own = teams.find((t) => t.name === 'Rama Moderador')
+    assert.ok(own)
+    assert.equal(await st('PATCH', `/admin/teams/${own.id}`, mod, { name: 'Rama Mod' }), 200)
+    assert.equal(await st('PATCH', `/admin/teams/${own.id}`, reviewer, { name: 'Rama Rev' }), 403)
+    const goals = (await call('POST', `${ev}/team-goals`, { token: mod, body: { name: 'Meta del mod', challengeId: made.data.challenge.id, members: 2 } }))
+    assert.equal(goals.status, 201)
+    const goal = goals.data.goals.find((g) => g.name === 'Meta del mod')
+    assert.equal(await st('PATCH', `/admin/team-goals/${goal.id}`, mod, { members: 3 }), 200)
+    assert.equal(await st('DELETE', `/admin/team-goals/${goal.id}`, reviewer), 403)
+    assert.equal(await st('DELETE', `/admin/team-goals/${goal.id}`, mod), 200)
+    assert.equal(await st('DELETE', `/admin/teams/${own.id}`, mod), 200)
+    // El resto de los ajustes sigue siendo solo del admin.
+    assert.equal(await st('POST', `${ev}/badges`, mod, { name: 'No debe', rule: { type: 'count', n: 1 } }), 403)
+    assert.equal(await st('PATCH', ev, mod, { levels: [{ name: 'Uno', minXp: 0 }] }), 403)
 
     // Cambiar el rol desde Usuarios y dejar todo como estaba.
     assert.equal((await call('PATCH', `/admin/users/${rev}`, { token: admin, body: { role: 'moderator' } })).data.user.role, 'moderator')
