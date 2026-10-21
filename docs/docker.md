@@ -198,6 +198,30 @@ Probarlo a mano una vez: `docker compose exec app npm run backup -- /backups`.
 Los backups quedan en `SAC_BACKUP_DIR` (o `~/Git/sac-quest/backups`). Lo ideal es
 que estén en **otro disco** que los datos.
 
+### Copia nocturna a otro disco (USB)
+
+`./backups` está en la misma microSD que los datos. Para tener una copia en
+otro disco, un script del sistema (fuera del repo, corre como root con un timer
+de systemd) hace cada noche:
+
+```bash
+# 1. instantánea fresca desde la app (consistente aunque esté andando)
+docker compose --project-directory ~/Git/sac-quest exec -T app npm run --silent backup -- /backups
+# 2. copia ./backups, el repo (incluye server/.env) y lo demás a la USB
+rsync -a --relative --exclude=node_modules ~/Git/sac-quest /mnt/usb/backups/<fecha>/
+```
+
+Reglas que lo hacen seguro:
+
+- **No copiar el volumen directamente** (`quest.db` + `-wal` en caliente puede
+  quedar corrupta): siempre pasar por `npm run backup`.
+- **No poner `SAC_BACKUP_DIR` en la USB**: si no está conectada, Docker escribe
+  en la carpeta vacía de la microSD, y `deploy/update.sh` no podría hacer su
+  backup previo (el deploy fallaría).
+- El script **aborta si la USB no está montada** (`mountpoint -q`) y conserva
+  los últimos 7 días. Si la app está parada, avisa y copia el último backup.
+- La copia lleva `server/.env` y `.deploy/token`: guardar la USB como una llave.
+
 Restaurar: `docker compose stop app`, copiar una instantánea como `quest.db` y
 la carpeta `files/` en la carpeta de datos (`SAC_DATA_DIR`), `docker compose
 start app`. Con el volumen por defecto (sin SSD), se entra a los datos así:

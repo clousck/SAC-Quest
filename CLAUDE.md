@@ -13,8 +13,10 @@ sin ventana) y subir los dos.
   en 17 Ramas muy desiguales (de 29 a 1). Moderan el usuario y el **SAC team (~10 personas)**.
 - **Un solo nombre: SAC Quest** (`sac-quest`, `sacquest`, `SAC_*`). No reintroducir nombres
   anteriores en código, docs ni identificadores.
-- Servidor: **Raspberry Pi 5 (8 GB) con microSD de 64 GB**, sin SSD ni disco de backup todavía,
-  detrás de **Cloudflare Tunnel**. Dominio: **sacquest.penginexr.com**, en un solo lugar:
+- Servidor: **Raspberry Pi 5 (8 GB) con microSD de 64 GB** (sin SSD) y una **USB de 32 GB** solo
+  para backups (ext4 `pi-usb`, `/mnt/usb`, `nofail`). Backup nocturno 3:00 con `/usr/local/bin/backup-pi.sh`
+  (timer systemd `backup-pi.timer`, fuera del repo): `npm run backup` → `./backups` y copia de eso, el
+  repo y los stacks a `/mnt/usb/backups/<fecha>`, 7 días (`docs/docker.md` §8). Detrás de **Cloudflare Tunnel**. Dominio: **sacquest.penginexr.com**, en un solo lugar:
   `server/.env` → `APP_DOMAIN` (QR y CORS salen de ahí). No hay API keys externas. En la Pi el
   repo está en `~/Git/sac-quest`. Ya está en producción ahí.
 - Despliegue **solo con Docker**: `Dockerfile` (página + API en una imagen, datos en `/data`,
@@ -181,6 +183,6 @@ sin ventana) y subir los dos.
   un reto ni el conjunto con varias personas (`docs/ensayo.md`).
 - Producción tiene dos eventos de prueba del usuario (`tallerdirectivosxv` y otro). Sus retos de
   Rama piden 5 integrantes y casi todas las Ramas tienen 1 inscrito: es esperado que no se cumplan.
-- **Pendiente**: ensayo con 10 personas; backup fuera de la microSD (el usuario lo pospuso).
+- **Pendiente**: ensayo con 10 personas; ensayar una restauración desde la USB.
 - **Descartado por el usuario**: repartir la cola de moderación (cada moderador filtra por su
   reto) y puntos otorgados por el staff para torneos.
