@@ -345,9 +345,12 @@ export function participantRanking(db, eventId) {
   }))
 }
 
-/** XP que puede juntar una persona: todos los retos publicados, sigan activos o no. */
+/**
+ * XP que puede juntar una persona: los retos activos. Uno desactivado no lo
+ * puede hacer nadie e inflaba los bonos de Rama (en una prueba, un 21 %).
+ */
 export function possibleXp(db, eventId) {
-  return db.get(`SELECT COALESCE(SUM(points), 0) AS xp FROM challenges WHERE event_id = :eventId AND status != 'draft'`, {
+  return db.get(`SELECT COALESCE(SUM(points), 0) AS xp FROM challenges WHERE event_id = :eventId AND status = 'active'`, {
     eventId,
   }).xp
 }

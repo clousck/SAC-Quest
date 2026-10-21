@@ -1,4 +1,4 @@
-// Diagnostico de un evento: retos con su regla de desbloqueo, envios por
+// Diagnostico de un evento: retos con su regla de desbloqueo, cupo y horario, envios por
 // estado, retos de Rama con el conteo de cada Rama y lo que ve una persona.
 // Solo lee la base (sirve con el servidor andando).
 //   npm run diagnose                      lista los eventos
@@ -35,7 +35,9 @@ if (!ev) {
 const eventId = ev.id
 console.log(`Evento ${ev.slug} (id ${ev.id}) · estado ${ev.status} · ${new Date().toISOString()}`)
 
-const challenges = db.all('SELECT * FROM challenges WHERE event_id = :eventId ORDER BY sort_order, id', { eventId }).map(toChallenge)
+const challengeRows = db.all('SELECT * FROM challenges WHERE event_id = :eventId ORDER BY sort_order, id', { eventId })
+const challenges = challengeRows.map(toChallenge)
+const updatedAt = new Map(challengeRows.map((r) => [r.id, r.updated_at]))
 const byId = new Map(challenges.map((c) => [c.id, c]))
 const counts = new Map()
 for (const r of db.all('SELECT challenge_id, status, COUNT(*) n FROM submissions WHERE event_id = :eventId GROUP BY 1, 2', { eventId })) {
@@ -48,6 +50,15 @@ for (const c of challenges) {
   console.log(
     `#${c.id} [${c.status}/${c.visibility}] ${c.type} «${c.title}» ${c.points} XP · aprobadas ${n('approved')}, pendientes ${n('pending')}, rechazadas ${n('rejected')}`,
   )
+  // Cupo y horario: lo que puede dejar un reto "lleno" o "cerrado" aunque este activo.
+  if (c.maxCompletions) {
+    const used = n('approved') + n('pending')
+    console.log(`     cupo ${c.maxCompletions} · usados ${used}${used >= c.maxCompletions ? ' → LLENO' : ''}`)
+  }
+  if (c.availableFrom || c.availableUntil) {
+    console.log(`     horario: desde ${c.availableFrom ?? '—'} hasta ${c.availableUntil ?? '—'}`)
+  }
+  console.log(`     editado por ultima vez ${updatedAt.get(c.id)}`)
   const rule = c.unlockRule
   if (!rule) continue
   console.log(`     regla guardada: ${JSON.stringify(rule)}`)

@@ -309,6 +309,12 @@ describe('flujo completo', () => {
     // Beto esta inscrito pero sin retos aprobados: no suma nada.
     assert.deepEqual({ members: b.members, active: b.active, score: b.score }, { members: 1, active: 0, score: 0 })
 
+    // Un reto inactivo no lo puede hacer nadie: no sube el maximo (ni los bonos).
+    const extra = (await call('POST', `/admin/events/${eventId}/challenges`, { token: admin, body: { type: 'QR', title: 'Inactivo', tier: null, points: 500, status: 'inactive' } })).data.challenge
+    ;[a] = await ranking()
+    assert.equal(a.participation, 33)
+    await call('DELETE', `/admin/challenges/${extra.id}`, { token: admin })
+
     const goal = { name: 'Presentes en el checkpoint', points: 10, challengeId: qrCh.id, members: 1 }
     const tooMany = await call('POST', `/admin/events/${eventId}/team-goals`, { token: admin, body: { ...goal, members: 6 } })
     assert.equal(tooMany.status, 400, 'un reto de Rama no pide más de 5 integrantes')

@@ -375,8 +375,8 @@ function TeamScoreCard() {
     .split(',')
     .map((w) => Number(w) / 100)
     .filter((w) => w > 0)
-  // XP que puede juntar una persona: todos los retos publicados.
-  const possible = (challenges.data?.challenges ?? []).filter((c) => c.status !== 'draft').reduce((sum, c) => sum + c.points, 0)
+  // XP que puede juntar una persona: los retos activos.
+  const possible = (challenges.data?.challenges ?? []).filter((c) => c.status === 'active').reduce((sum, c) => sum + c.points, 0)
   const maxBest = Math.round(weights.reduce((a, b) => a + b, 0) * possible)
   const maxParticipation = Math.round((maxBest * (Number(f.participation) || 0)) / 100)
   const hasGoals = (goals.data?.goals.length ?? 0) > 0
@@ -433,7 +433,7 @@ function TeamScoreCard() {
       </fieldset>
       <p className="max-total">
         Máximo total por {label}: <strong>{(maxBest + maxParticipation + maxCollective).toLocaleString('es-EC')} XP</strong>
-        <span className="muted small"> · con los {possible} XP de los retos publicados hoy</span>
+        <span className="muted small"> · con los {possible} XP de los retos activos hoy</span>
       </p>
       <p className="muted small">
         <strong>Mejores:</strong> el XP del mejor integrante cuenta completo y el de los siguientes, el porcentaje indicado.{' '}

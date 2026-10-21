@@ -111,7 +111,7 @@ Está en las mismas unidades que el XP de las personas y suma tres partes:
 El bono de participación y los retos de Rama pueden valer, cada uno, hasta la
 mitad de lo máximo que pueden sumar los mejores (los cinco con todos los retos
 del evento). Esos porcentajes se cambian en Ajustes → XP por Rama, que además
-muestra el XP máximo de cada parte con los retos publicados en ese momento.
+muestra el XP máximo de cada parte con los retos activos en ese momento.
 
 Los inscritos que no participan no suman nada. El XP de cada persona no cambia.
 Con pocos retos en el evento es fácil que varias Ramas lleguen cerca del máximo:

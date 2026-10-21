@@ -59,7 +59,7 @@ sin ventana) y subir los dos.
   reto aprobado con puntos; curva log, completo con 10) + retos de Rama (tabla `team_goals`: «N
   integrantes completan el reto X», N ≤ 5, sin XP personal). `settings.teamScore` guarda pesos
   relativos (150/75/75 = participación y retos valen cada uno hasta la mitad del máximo de los
-  mejores, que es 2.4 × el XP de todos los retos publicados). Se decidió con simulaciones: la suma
+  mejores, que es 2.4 × el XP de todos los retos activos; los inactivos no cuentan). Se decidió con simulaciones: la suma
   de XP hacía ganar siempre a la Rama más grande; los inscritos inactivos no deben sumar. Antes se
   mostraba normalizado a 300 y al usuario le pareció artificial. Con pocos retos todos se acercan
   al máximo. Las Ramas muy chicas se juntan a mano en el panel (máx. 5 por Rama unida).
